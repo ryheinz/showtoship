@@ -760,7 +760,7 @@ function loadDashboard() {
 
 // ── Leads table ───────────────────────────────────────────────────────────
 function loadLeads() {
-  renderLeadsTable(allLeads);
+  filterLeadsTable();
   document.getElementById('leads-subtitle').textContent = `${allLeads.length} total leads`;
   // Populate assigned filter
   const asel = document.getElementById('filter-assigned');

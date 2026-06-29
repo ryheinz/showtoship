@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       use_llm:
-        description: "LLM extraction (needs OPENAI_API_KEY)"
+        description: "LLM extraction (uses Ollama local, or OpenAI if OPENAI_API_KEY set)"
         default: "false"
         type: choice
         options: ["false", "true"]
@@ -73,6 +73,13 @@ jobs:
           ${{ github.event.inputs.urls }}
           EOF
 
+      - name: Install Ollama (for LLM extraction)
+        if: ${{ github.event.inputs.use_llm == 'true' && secrets.OPENAI_API_KEY == '' }}
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama pull llama3
+          ollama serve &>/dev/null &
+
       - name: Run scraper + email finder
         env:
           OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
@@ -88,7 +95,8 @@ jobs:
 
           ARGS="--urls /tmp/urls.txt --out /tmp/${OUTPUT} --show-name '${SAFE}'"
 
-          [ "${{ github.event.inputs.use_llm }}"      = "true" ] && ARGS="$ARGS --llm"
+          [ "${{ github.event.inputs.use_llm }}" = "true" ] && ARGS="$ARGS --llm"
+          [ "${{ github.event.inputs.use_llm }}" = "true" ] && [ -z "${OPENAI_API_KEY}" ] && export LLM_PROVIDER="ollama/llama3"
           [ "${{ github.event.inputs.deep_scrape }}"  = "true" ] && ARGS="$ARGS --deep"
           [ "${{ github.event.inputs.find_emails }}"  = "true" ] && ARGS="$ARGS --emails"
           [ "${{ github.event.inputs.linkedin_enrich }}" = "true" ] && ARGS="$ARGS --linkedin"

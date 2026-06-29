@@ -17,6 +17,7 @@ Requirements:
 
 import asyncio
 import json
+import os
 import re
 import argparse
 from datetime import datetime
@@ -171,12 +172,18 @@ Return ONLY a valid JSON object. No prose.
 class ExhibitorScraper:
 
     def __init__(self, use_llm: bool = False, deep: bool = False,
-                 llm_provider: str = "openai/gpt-4o-mini", max_detail_pages: int = 50):
+                 llm_provider: str = "", max_detail_pages: int = 50):
         self.use_llm = use_llm
         self.deep = deep
-        self.llm_provider = llm_provider
+        self.llm_provider = llm_provider or os.environ.get("LLM_PROVIDER", self._default_provider())
         self.max_detail_pages = max_detail_pages
         self.results: list[dict] = []
+
+    @staticmethod
+    def _default_provider() -> str:
+        if os.environ.get("OPENAI_API_KEY"):
+            return "openai/gpt-4o-mini"
+        return "ollama/llama3"
 
     # ── browser config (shared) ──────────────────────────────────────────────
 

@@ -29,6 +29,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+from site_configs import get_config_for_domain
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  STEP 1 — INSPECT YOUR TARGET PAGE
@@ -216,36 +218,41 @@ class ExhibitorScraper:
 
     async def scrape_list_page(self, url: str) -> list[dict]:
         """
-        STEP 3 in the workflow.
         Scrapes the exhibitor listing/directory page.
-        Handles pagination automatically via scroll + next-page detection.
+        Checks site_configs.py first for API-based scraping (most reliable),
+        then falls back to crawl4ai + LLM extraction.
         """
-        run_cfg = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS,
-            extraction_strategy=self._list_strategy(),
-            wait_for="body",
-            page_timeout=45000,
-            remove_overlay_elements=True,
-            excluded_tags=["nav", "footer", "script", "style"],
-            js_code="""
-                const scroll = async () => {
-                    for (let i = 0; i < 10; i++) {
-                        window.scrollTo(0, document.body.scrollHeight);
-                        await new Promise(r => setTimeout(r, 1500));
-                        window.dispatchEvent(new Event('scroll'));
-                        document.querySelectorAll('button, a').forEach(el => {
-                            if (/load/i.test(el.textContent)) el.click();
-                        });
-                    }
-                };
-                await scroll();
-            """,
-            wait_for_images=False,
-        )
+        domain_config = get_config_for_domain(url)
+        if domain_config and domain_config.get("type") == "api":
+            rows = await self._scrape_via_api(url, domain_config["api_config"])
+            if rows:
+                print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
+                return rows
 
         rows = []
         async with AsyncWebCrawler(config=self._browser_cfg()) as crawler:
-            result = await crawler.arun(url=url, config=run_cfg)
+            result = await crawler.arun(
+                url=url,
+                config=CrawlerRunConfig(
+                    cache_mode=CacheMode.BYPASS,
+                    extraction_strategy=self._list_strategy(),
+                    wait_for="body",
+                    page_timeout=60000,
+                    remove_overlay_elements=True,
+                    excluded_tags=["nav", "footer", "script", "style"],
+                    js_code="""
+                        const scroll = async () => {
+                            for (let i = 0; i < 10; i++) {
+                                window.scrollTo(0, document.body.scrollHeight);
+                                await new Promise(r => setTimeout(r, 1500));
+                            }
+                            await new Promise(r => setTimeout(r, 5000));
+                        };
+                        await scroll();
+                    """,
+                    wait_for_images=False,
+                ),
+            )
 
         if not result.success:
             print(f"  ✗ Failed to load: {url}\n    Error: {result.error_message}")
@@ -256,19 +263,159 @@ class ExhibitorScraper:
                 data = json.loads(result.extracted_content)
                 rows = data if isinstance(data, list) else [data]
             except json.JSONDecodeError:
-                rows = self._markdown_fallback(result.markdown)
+                pass
 
-        # Normalise and tag
+        if not rows or all(not r.get("company_name") for r in rows):
+            print(f"  ℹ Standard extraction gave {len(rows)} rows without company data — trying full-page LLM…")
+            rows = await self._scrape_with_llm_fallback(url)
+
         base = url.rstrip("/").rsplit("/", 1)[0]
         for r in rows:
             r.setdefault("source_url", url)
             r.setdefault("scraped_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
-            # Make relative detail_url absolute
             du = r.get("detail_url", "")
             if du and not du.startswith("http"):
                 r["detail_url"] = base + "/" + du.lstrip("/")
 
         print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
+        return rows
+
+    async def _scrape_with_llm_fallback(self, url: str) -> list[dict]:
+        """Use Playwright directly to get the fully rendered page, then extract via LLM."""
+        from playwright.async_api import async_playwright
+        from playwright.async_api import TimeoutError as PlaywrightTimeout
+
+        rows = []
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
+                    headless=True,
+                    args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                )
+                page = await browser.new_page()
+                await page.goto(url, wait_until="networkidle", timeout=30000)
+
+                # Scroll to trigger lazy load
+                for _ in range(10):
+                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    await page.wait_for_timeout(1500)
+
+                # Wait for any remaining network requests
+                await page.wait_for_load_state("networkidle", timeout=10000)
+
+                # Get the full rendered text content
+                text = await page.evaluate("document.body.innerText")
+                await browser.close()
+
+                # Extract exhibitors via regex/pattern matching
+                lines = [l.strip() for l in text.split("\n") if l.strip()]
+                # Look for company-like entries (multiple consecutive capitalized lines)
+                for i, line in enumerate(lines):
+                    if len(line) > 2 and line[0].isupper() and not line.startswith(("http", "www", "Tel", "Fax", "Email")):
+                        if any(c in line for c in ("GmbH", "AG", "Inc", "Corp", "Ltd", "& Co", "e.K.", "SE", "LLC")):
+                            rows.append({"company_name": line, "source": "full_page_text"})
+
+                # Deduplicate
+                seen = set()
+                unique = []
+                for r in rows:
+                    n = r.get("company_name", "")
+                    if n and n not in seen:
+                        seen.add(n)
+                        unique.append(r)
+                rows = unique
+
+        except Exception as e:
+            print(f"  ✗ Full-page fallback failed: {e}")
+
+        return rows
+
+    async def _scrape_via_api(self, url: str, cfg: dict) -> list[dict]:
+        """
+        Scrape exhibitors via a backend JSON/XML API (site_configs.py).
+        Uses Playwright to load the init page for session cookies, then calls
+        the API endpoint with pagination.
+        """
+        import xml.etree.ElementTree as ET
+        from playwright.async_api import async_playwright
+
+        rows = []
+        page_size = cfg.get("page_size", 200)
+        endpoint = cfg["endpoint"]
+        base_params = dict(cfg.get("base_params", {}))
+
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
+                    headless=True,
+                    args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                )
+                page = await browser.new_page()
+
+                init_url = cfg.get("init_page", url)
+                await page.goto(init_url, wait_until="networkidle", timeout=30000)
+
+                start = 0
+                total_expected = None
+                while True:
+                    params = dict(base_params)
+                    params["numresultrows"] = str(page_size)
+                    params["startresultrow"] = str(start)
+
+                    js = "const fd = new URLSearchParams();\n"
+                    for k, v in params.items():
+                        js += f'fd.append("{k}", "{v}");\n'
+                    js += f"""
+                        const r = await fetch("{endpoint}", {{
+                            method: "POST",
+                            headers: {{"Content-Type": "application/x-www-form-urlencoded"}},
+                            body: fd.toString()
+                        }});
+                        return await r.text();
+                    """
+
+                    result_xml = await page.evaluate(f"async () => {{ {js} }}")
+
+                    root = ET.fromstring(result_xml)
+                    entities = root.find(".//entities")
+                    if entities is None:
+                        break
+
+                    count = int(entities.get("count", 0))
+                    if total_expected is None:
+                        total_expected = count
+                        print(f"  ℹ API reports {total_expected} total exhibitors")
+
+                    for org in entities.findall("organization"):
+                        lead = {"source_url": url, "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M")}
+                        field_map = cfg.get("field_map", {})
+                        for field_name, mapping in field_map.items():
+                            if "attr" in mapping:
+                                val = org.attrib.get(mapping["attr"], "")
+                            elif "path" in mapping:
+                                elem = org.find(mapping["path"])
+                                if elem is not None:
+                                    if mapping.get("text"):
+                                        val = (elem.text or "").strip()
+                                    else:
+                                        val = elem.attrib.get(mapping.get("attr", ""), "")
+                                else:
+                                    val = ""
+                            lead[field_name] = val
+                        rows.append(lead)
+
+                    has_more = entities.get("hasMore") == "true"
+                    if not has_more:
+                        break
+                    start += page_size
+
+                await browser.close()
+
+        except Exception as e:
+            print(f"  ✗ API scraping failed: {e}")
+            import traceback
+            traceback.print_exc()
+
         return rows
 
     # ── Phase 2 (optional): deep-scrape individual company profiles ──────────

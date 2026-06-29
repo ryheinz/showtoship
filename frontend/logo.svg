@@ -1,67 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
-  <defs>
-    <linearGradient id="hullGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#00AEEF"/>
-      <stop offset="100%" stop-color="#0077C8"/>
-    </linearGradient>
-    <linearGradient id="wakeGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#00AEEF" stop-opacity="0.6"/>
-      <stop offset="100%" stop-color="#00AEEF" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#00AEEF" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#00AEEF" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-
-  <!-- ── Water line ── -->
-  <path d="M2 54 Q20 51 38 54 Q56 57 74 54" stroke="url(#wakeGrad)" stroke-width="1.5" stroke-linecap="round"/>
-  <path d="M2 58 Q20 55 38 58 Q56 61 74 58" stroke="#00AEEF" stroke-width="0.8" stroke-opacity="0.25" stroke-linecap="round"/>
-
-  <!-- ── Hull ── -->
-  <path d="M8 50 L12 36 L18 32 L52 32 L62 36 L68 50 Z" fill="url(#hullGrad)"/>
-
-  <!-- ── Hull shadow/depth ── -->
-  <path d="M8 50 L12 36 L18 32 L52 32 L62 36 L68 50" stroke="#0055A0" stroke-width="1" fill="none"/>
-
-  <!-- ── Deck / superstructure ── -->
-  <rect x="22" y="24" width="32" height="10" rx="2" fill="#002B5C"/>
-  <rect x="26" y="16" width="20" height="10" rx="2" fill="#003670"/>
-
-  <!-- ── Bridge windows ── -->
-  <rect x="28" y="18" width="5" height="5" rx="1" fill="#00AEEF" opacity="0.9"/>
-  <rect x="35" y="18" width="5" height="5" rx="1" fill="#00AEEF" opacity="0.9"/>
-  <rect x="42" y="18" width="5" height="5" rx="1" fill="#00AEEF" opacity="0.5"/>
-
-  <!-- ── Mast / sensor ── -->
-  <line x1="38" y1="6" x2="38" y2="16" stroke="#00AEEF" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="38" cy="5" r="2" fill="#00AEEF"/>
-  <!-- Radar arm -->
-  <line x1="33" y1="9" x2="43" y2="9" stroke="#00AEEF" stroke-width="1" stroke-opacity="0.7" stroke-linecap="round"/>
-
-  <!-- ── Bow thruster detail ── -->
-  <path d="M62 38 L68 44 L68 50 L62 50 Z" fill="#0055A0" opacity="0.6"/>
-
-  <!-- ── Wake behind hull ── -->
-  <path d="M68 48 Q80 45 92 49 Q100 51 108 48" stroke="url(#wakeGrad)" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M68 52 Q82 49 96 53 Q106 55 116 52" stroke="#00AEEF" stroke-width="1" stroke-opacity="0.2" stroke-linecap="round" fill="none"/>
-
-  <!-- ══ WORDMARK ══════════════════════════════════════════════════ -->
-  <!-- "Show" in white -->
-  <text x="128" y="38" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-        font-size="22" font-weight="900" letter-spacing="-0.5" fill="#E8EAF0">Show</text>
-  <!-- "to" in muted -->
-  <text x="197" y="38" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-        font-size="16" font-weight="700" letter-spacing="0" fill="#7A7D90">to</text>
-  <!-- "Ship" in cyan -->
-  <text x="220" y="38" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-        font-size="22" font-weight="900" letter-spacing="-0.5" fill="#00AEEF">Ship</text>
-
-  <!-- Tagline -->
-  <text x="129" y="54" font-family="'Arial', sans-serif"
-        font-size="9" font-weight="400" letter-spacing="2.5" fill="#4A4D60"
-        text-anchor="start">TRADESHOW LEAD INTELLIGENCE</text>
-
-  <!-- ── Divider line ── -->
-  <line x1="129" y1="42" x2="306" y2="42" stroke="#2A2C3A" stroke-width="0.75"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <path d="M6 30 L10 18 L15 14 L25 14 L30 18 L34 30 Z" fill="#5B8DEF"/>
+  <rect x="13" y="9" width="14" height="6" rx="1.5" fill="#5B8DEF" opacity="0.7"/>
+  <rect x="15" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14"/>
+  <rect x="19" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14"/>
+  <rect x="23" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14" opacity="0.5"/>
+  <line x1="27" y1="5" x2="27" y2="9" stroke="#4ECDC4" stroke-width="1.5"/>
+  <circle cx="27" cy="4" r="2" fill="#4ECDC4"/>
+  <path d="M34 28 Q40 26 46 30" stroke="#4ECDC4" stroke-width="1" opacity="0.4"/>
 </svg>

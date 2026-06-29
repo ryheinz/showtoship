@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.github.com https://fonts.googleapis.com; img-src 'self' data:;">
+<title>ShowToShip — Tradeshow Lead Intelligence</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Instrument+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0E0F14;
+  --surface:#15161D;
+  --surface2:#1C1D27;
+  --surface3:#222430;
+  --border:#2A2C3A;
+  --border2:#363848;
+  --text:#E8EAF0;
+  --muted:#7A7D90;
+  --dim:#4A4D60;
+  --accent:#5B8DEF;
+  --accent2:#4ECDC4;
+  --green:#3ECF8E;
+  --amber:#F59E0B;
+  --red:#F87171;
+  --purple:#A78BFA;
+  --font:'Familjen Grotesk',sans-serif;
+  --mono:'Instrument Mono',monospace;
+  --r:8px;
+}
+html{font-size:15px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+
+/* ── Topbar ── */
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:50}
+.logo{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:4px 0}
+.logo-icon{display:none}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 8px;font-size:13px;cursor:pointer}
+.avatar{width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.btn-sm{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-sm:hover{opacity:.85}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:7px 14px;font-family:var(--font);font-size:13px;cursor:pointer;transition:all .15s}
+.btn-outline:hover{border-color:var(--text);color:var(--text)}
+
+/* ── Sidebar ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto}
+.nav-section{margin-bottom:8px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:8px 16px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13.5px;color:var(--muted);cursor:pointer;border-radius:0;transition:all .12s;text-decoration:none;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(91,141,239,.1);color:var(--accent);border-left-color:var(--accent)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px}
+
+/* ── Main ── */
+.main{overflow-y:auto;background:var(--bg)}
+.page{display:none;padding:28px 32px;min-height:100%}
+.page.active{display:block}
+
+/* ── Page headers ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px}
+.page-header h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+.page-header p{font-size:14px;color:var(--muted);margin-top:4px}
+.header-actions{display:flex;gap:10px;flex-shrink:0}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px}
+.stat-label{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500}
+.stat-value{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.stat-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.stat-card.accent .stat-value{color:var(--accent)}
+.stat-card.green  .stat-value{color:var(--green)}
+.stat-card.amber  .stat-value{color:var(--amber)}
+.stat-card.purple .stat-value{color:var(--purple)}
+
+/* ── Table ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-toolbar{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;flex:1;min-width:200px}
+.search-box input{background:none;border:none;outline:none;font-family:var(--font);font-size:13.5px;color:var(--text);width:100%}
+.search-box input::placeholder{color:var(--dim)}
+.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;cursor:pointer}
+.filter-select option{background:var(--surface2)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{text-align:left;padding:11px 14px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+thead th input[type=checkbox]{accent-color:var(--accent)}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.02)}
+tbody tr.selected td{background:rgba(91,141,239,.05)}
+.company-cell{display:flex;align-items:center;gap:10px}
+.company-avatar{width:30px;height:30px;border-radius:6px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0;text-transform:uppercase}
+.company-name{font-weight:600;color:var(--text)}
+.company-meta{font-size:11px;color:var(--muted);margin-top:1px}
+a.ext-link{color:var(--accent);text-decoration:none;font-size:12px}
+a.ext-link:hover{text-decoration:underline}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.03em}
+.badge-new{background:rgba(91,141,239,.15);color:var(--accent)}
+.badge-contacted{background:rgba(78,205,196,.15);color:var(--accent2)}
+.badge-qualified{background:rgba(62,207,142,.15);color:var(--green)}
+.badge-disqualified{background:rgba(248,113,113,.15);color:var(--red)}
+.badge-opportunity{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-closed{background:rgba(167,139,250,.15);color:var(--purple)}
+.badge-high{background:rgba(248,113,113,.12);color:var(--red)}
+.badge-medium{background:rgba(245,158,11,.12);color:var(--amber)}
+.badge-low{background:rgba(91,141,239,.12);color:var(--accent)}
+.conf-high{color:var(--green)}
+.conf-medium{color:var(--amber)}
+.conf-low{color:var(--red)}
+
+/* ── Action menu ── */
+.action-btn{background:none;border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:var(--font);font-size:12px;color:var(--muted);cursor:pointer;transition:all .12s}
+.action-btn:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── Modal / Panel ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.5)}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-size:17px;font-weight:700}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px}
+.modal-body{padding:24px}
+
+/* ── Form ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-grid.full{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.field input,.field textarea,.field select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-family:var(--font);font-size:13.5px;color:var(--text);outline:none;transition:border-color .15s}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:80px}
+.field select option{background:var(--surface2)}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* ── Scrape modal ── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info strong{display:block;font-size:14px;font-weight:600}
+.toggle-info span{font-size:12px;color:var(--muted)}
+.switch{position:relative;width:40px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;cursor:pointer;transition:.2s}
+.slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+.slider{background:var(--accent)}
+.switch input:checked+.slider::before{transform:translateX(18px)}
+
+/* ── Lead detail side panel ── */
+.side-panel{position:fixed;right:-440px;top:56px;width:440px;height:calc(100vh - 56px);background:var(--surface);border-left:1px solid var(--border);z-index:100;transition:right .25s ease;overflow-y:auto;padding:24px}
+.side-panel.open{right:0}
+.panel-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px}
+.panel-company{font-size:20px;font-weight:700;margin-bottom:4px}
+.panel-meta{font-size:13px;color:var(--muted);margin-bottom:20px}
+.panel-section{margin-bottom:20px}
+.panel-section-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.info-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--muted)}
+.info-value{color:var(--text);font-weight:500;text-align:right;max-width:60%}
+.activity-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;margin-top:5px}
+.activity-dot.status{background:var(--accent)}
+.activity-dot.note{background:var(--green)}
+.activity-time{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* ── Scrape job log ── */
+.job-log{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:14px;font-family:var(--mono);font-size:12px;max-height:200px;overflow-y:auto;margin-top:14px}
+.log-line{display:block;line-height:1.7;color:var(--muted)}
+.log-line.ok{color:var(--green)}
+.log-line.err{color:var(--red)}
+.log-line.info{color:var(--accent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+
+/* ── Config ── */
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.secret-field{position:relative}
+.secret-field input{padding-right:38px}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="logo">
+    <img src="logo.svg" alt="ShowToShip" style="height:36px;width:auto;display:block">
+  </div>
+  <div style="height:20px;width:1px;background:var(--border);margin:0 4px"></div>
+  <span style="font-size:13px;color:var(--muted)" id="active-show-label">No show selected</span>
+  <div class="topbar-right">
+    <button class="btn-sm" onclick="openScrapeModal()">+ New Scrape</button>
+    <button class="btn-outline" onclick="showPage('config')">⚙ Settings</button>
+    <div class="user-chip" onclick="showPage('config')">
+      <div class="avatar" id="user-avatar">?</div>
+      <span id="user-name" style="font-size:13px">Setup</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══ SIDEBAR ═════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="nav-section">
+    <div class="nav-label">Workspace</div>
+    <a class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" onclick="showPage('leads')" data-page="leads">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      All Leads
+      <span class="nav-badge" id="leads-count">0</span>
+    </a>
+    <a class="nav-item" onclick="showPage('shows')" data-page="shows">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Tradeshows
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Pipeline</div>
+    <a class="nav-item" onclick="filterLeads('new')" data-filter="new">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      New
+    </a>
+    <a class="nav-item" onclick="filterLeads('contacted')" data-filter="contacted">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 18"/></svg>
+      Contacted
+    </a>
+    <a class="nav-item" onclick="filterLeads('qualified')" data-filter="qualified">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      Qualified
+    </a>
+    <a class="nav-item" onclick="filterLeads('opportunity')" data-filter="opportunity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Opportunities
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Tools</div>
+    <a class="nav-item" onclick="showPage('linkedin')" data-page="linkedin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+      LinkedIn Tools
+    </a>
+    <a class="nav-item" onclick="exportLeads()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Excel
+    </a>
+    <a class="nav-item" onclick="showPage('config')" data-page="config">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 1 1-14.14 0"/></svg>
+      Settings
+    </a>
+  </div>
+</nav>
+
+<!-- ══ MAIN CONTENT ════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ── Dashboard ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div><h1>Dashboard</h1><p>Your tradeshow lead intelligence overview</p></div>
+      <div class="header-actions">
+        <button class="btn-outline" onclick="loadAllData()">↻ Refresh</button>
+        <button class="btn-sm" onclick="openScrapeModal()">+ New Scrape</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card accent"><div class="stat-label">Total Leads</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub">across all shows</div></div>
+      <div class="stat-card green"><div class="stat-label">Emails Found</div><div class="stat-value" id="stat-emails">—</div><div class="stat-sub">with contact info</div></div>
+      <div class="stat-card amber"><div class="stat-label">Qualified</div><div class="stat-value" id="stat-qualified">—</div><div class="stat-sub">ready to pursue</div></div>
+      <div class="stat-card purple"><div class="stat-label">Tradeshows</div><div class="stat-value" id="stat-shows">—</div><div class="stat-sub">in pipeline</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px">
+      <div class="table-wrap">
+        <div class="table-toolbar" style="padding:14px 18px;">
+          <span style="font-weight:600;font-size:14px">Recent Leads</span>
+          <button class="btn-sm" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="showPage('leads')">View all</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Company</th><th>Show</th><th>Status</th><th>Email</th>
+          </tr></thead>
+          <tbody id="recent-leads-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--dim);padding:32px">No leads yet — run a scrape to get started</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Upcoming Shows</span></div>
+        <table>
+          <thead><tr><th>Show</th><th>Date</th><th>Leads</th></tr></thead>
+          <tbody id="shows-overview-body">
+            <tr><td colspan="3" style="text-align:center;color:var(--dim);padding:32px">No shows added</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── All Leads ── -->
+  <div class="page" id="page-leads">
+    <div class="page-header">
+      <div><h1>All Leads</h1><p id="leads-subtitle">Loading…</p></div>
+      <div class="header-actions">
+        <button class="btn-outline" onclick="exportLeads()">Export CSV</button>
+        <button class="btn-sm" onclick="openScrapeModal()">+ Scrape</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="lead-search" placeholder="Search company, email, country…" oninput="debounceFilter()">
+        </div>
+        <select class="filter-select" id="filter-show" onchange="filterLeadsTable()">
+          <option value="">All Shows</option>
+        </select>
+        <select class="filter-select" id="filter-status" onchange="filterLeadsTable()">
+          <option value="">All Statuses</option>
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="disqualified">Disqualified</option>
+          <option value="opportunity">Opportunity</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select class="filter-select" id="filter-assigned" onchange="filterLeadsTable()">
+          <option value="">All Team</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr>
+          <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+          <th>Company</th>
+          <th>Show</th>
+          <th>Country</th>
+          <th>Category</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Assigned</th>
+          <th>Priority</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="leads-table-body">
+          <tr><td colspan="10" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Tradeshows ── -->
+  <div class="page" id="page-shows">
+    <div class="page-header">
+      <div><h1>Tradeshows</h1><p>Manage your show calendar and trigger scrapes</p></div>
+      <button class="btn-sm" onclick="openAddShowModal()">+ Add Show</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Show Name</th><th>Location</th><th>Industry</th><th>Dates</th><th>Leads</th><th>Attending</th><th></th>
+        </tr></thead>
+        <tbody id="shows-table-body">
+          <tr><td colspan="7" style="text-align:center;color:var(--dim);padding:40px">No shows yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── LinkedIn Tools ── -->
+  <div class="page" id="page-linkedin">
+    <div class="page-header">
+      <div><h1>LinkedIn Tools</h1><p>Enrich leads with LinkedIn Sales Navigator data</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Import Sales Navigator CSV</span></div>
+        <div style="padding:24px">
+          <p style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Export leads from LinkedIn Sales Navigator and import them here to merge with your tradeshow data.</p>
+          <div style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer" onclick="document.getElementById('csv-upload').click()" id="drop-zone">
+            <div style="font-size:28px;margin-bottom:8px">📄</div>
+            <div style="font-weight:600;margin-bottom:4px">Drop Sales Navigator CSV here</div>
+            <div style="font-size:12px;color:var(--dim)">or click to browse</div>
+          </div>
+          <input type="file" id="csv-upload" accept=".csv" style="display:none" onchange="handleCSVUpload(this)">
+          <div id="csv-status" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Phantombuster Integration</span></div>
+        <div style="padding:24px">
+          <p style="font-size:13.5px;color:var(--muted);margin-bottom:16px">Automate LinkedIn enrichment using Phantombuster. Requires setup in your GitHub Secrets.</p>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="field"><label>Phantombuster API Key</label>
+              <div class="secret-field">
+                <input type="password" id="pb-key" placeholder="Set in GitHub Secrets as PHANTOMBUSTER_API_KEY">
+                <button class="eye-btn" onclick="toggleSecret('pb-key')">👁</button>
+              </div>
+            </div>
+            <div class="field"><label>Search Phantom ID</label>
+              <input type="text" id="pb-search-id" placeholder="From Phantombuster dashboard">
+            </div>
+            <div class="field"><label>Profile Phantom ID</label>
+              <input type="text" id="pb-profile-id" placeholder="From Phantombuster dashboard">
+            </div>
+            <a href="https://phantombuster.com/automations/linkedin" target="_blank" style="font-size:13px;color:var(--accent)">→ Set up Phantombuster LinkedIn automations</a>
+            <button class="btn-sm" onclick="savePBConfig()" style="align-self:flex-start">Save Phantombuster Config</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Settings ── -->
+  <div class="page" id="page-config">
+    <div class="page-header">
+      <div><h1>Settings</h1><p>Configure your GitHub and Supabase connections</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">GitHub Connection</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div class="field">
+            <label>Personal Access Token</label>
+            <div class="secret-field">
+              <input type="password" id="cfg-pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+              <button class="eye-btn" onclick="toggleSecret('cfg-pat')">👁</button>
+            </div>
+          </div>
+          <div class="field"><label>Repository <small style="text-transform:none;font-weight:400;color:var(--dim)">owner/repo</small></label>
+            <input type="text" id="cfg-repo" placeholder="your-username/showtoship">
+          </div>
+          <div class="field"><label>Your Name (shown to team)</label>
+            <input type="text" id="cfg-name" placeholder="e.g. Alex">
+          </div>
+          <button class="btn-sm" onclick="saveConfig()" style="align-self:flex-start">Save</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Supabase Database</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:14px">
+          <div class="field"><label>Project URL</label>
+            <input type="text" id="cfg-sb-url" placeholder="https://xxxx.supabase.co">
+          </div>
+          <div class="field">
+            <label>Anon Key</label>
+            <div class="secret-field">
+              <input type="password" id="cfg-sb-key" placeholder="eyJhbGciOi...">
+              <button class="eye-btn" onclick="toggleSecret('cfg-sb-key')">👁</button>
+            </div>
+          </div>
+          <button class="btn-outline" onclick="testSupabase()" style="align-self:flex-start">Test Connection</button>
+          <div id="sb-test-result" style="font-size:13px"></div>
+        </div>
+      </div>
+      <div class="table-wrap" style="grid-column:1/-1">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Team Members</span></div>
+        <div style="padding:24px">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Add team member names so leads can be assigned to them.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input type="text" id="team-member-input" placeholder="Team member name" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none">
+            <button class="btn-sm" onclick="addTeamMember()">Add</button>
+          </div>
+          <div id="team-list" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ SIDE PANEL (lead detail) ════════════════════════════════════ -->
+<div class="side-panel" id="lead-panel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div id="panel-content"></div>
+</div>
+
+<!-- ══ MODALS ══════════════════════════════════════════════════════ -->
+
+<!-- Scrape modal -->
+<div class="modal-overlay" id="scrape-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>New Scrape Job</h3>
+      <button class="modal-close" onclick="closeModal('scrape-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="field">
+          <label>Select Tradeshow</label>
+          <select id="scrape-show-select">
+            <option value="">— choose or type below —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Exhibitor List URLs <small style="font-weight:400;text-transform:none;color:var(--dim)">one per line</small></label>
+          <textarea id="scrape-urls" placeholder="https://www.someshow.com/exhibitors&#10;https://www.anothershow.com/companies" style="min-height:90px"></textarea>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:16px">
+          <div class="toggle-row">
+            <div class="toggle-info"><strong>LLM Extraction</strong><span>AI-powered — more accurate, needs OpenAI key</span></div>
+            <label class="switch"><input type="checkbox" id="s-llm"><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><strong>Deep Scrape Profiles</strong><span>Follow each exhibitor's detail page</span></div>
+            <label class="switch"><input type="checkbox" id="s-deep"><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><strong>Find Email Addresses</strong><span>Hunt emails on company websites + web</span></div>
+            <label class="switch"><input type="checkbox" id="s-emails" checked><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row" style="border-bottom:none">
+            <div class="toggle-info"><strong>LinkedIn Enrichment</strong><span>Via Phantombuster (requires setup)</span></div>
+            <label class="switch"><input type="checkbox" id="s-linkedin"><span class="slider"></span></label>
+          </div>
+        </div>
+        <button class="btn-sm" id="run-btn" onclick="triggerScrape()" style="padding:13px">▶  Run Scrape</button>
+        <div class="job-log" id="scrape-log" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add show modal -->
+<div class="modal-overlay" id="show-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add Tradeshow</h3>
+      <button class="modal-close" onclick="closeModal('show-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1"><label>Show Name</label><input type="text" id="show-name-input" placeholder="e.g. Hannover Messe 2025"></div>
+        <div class="field"><label>Location</label><input type="text" id="show-location" placeholder="City, Country"></div>
+        <div class="field"><label>Industry</label><input type="text" id="show-industry" placeholder="e.g. Manufacturing"></div>
+        <div class="field"><label>Start Date</label><input type="date" id="show-date-start"></div>
+        <div class="field"><label>End Date</label><input type="date" id="show-date-end"></div>
+        <div class="field"><label>Website</label><input type="text" id="show-website" placeholder="https://"></div>
+        <div class="field" style="align-items:flex-start;padding-top:20px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="show-attending"> Attending this show
+          </label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-outline" onclick="closeModal('show-modal')">Cancel</button>
+        <button class="btn-sm" onclick="saveShow()">Add Show</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ JAVASCRIPT ═══════════════════════════════════════════════════ -->
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const LS = {
+  pat:   'ls_pat',   repo: 'ls_repo', name: 'ls_name',
+  sbUrl: 'ls_sb_url', sbKey: 'ls_sb_key',
+  team:  'ls_team',
+};
+
+const cfg = () => ({
+  pat:   localStorage.getItem(LS.pat)   || '',
+  repo:  localStorage.getItem(LS.repo)  || '',
+  name:  localStorage.getItem(LS.name)  || 'User',
+  sbUrl: localStorage.getItem(LS.sbUrl) || '',
+  sbKey: localStorage.getItem(LS.sbKey) || '',
+  team:  JSON.parse(localStorage.getItem(LS.team) || '[]'),
+});
+
+function saveConfig() {
+  const pat   = document.getElementById('cfg-pat').value.trim();
+  const repo  = document.getElementById('cfg-repo').value.trim();
+  const name  = document.getElementById('cfg-name').value.trim();
+  const sbUrl = document.getElementById('cfg-sb-url').value.trim();
+  const sbKey = document.getElementById('cfg-sb-key').value.trim();
+  if (pat)   localStorage.setItem(LS.pat,   pat);
+  if (repo)  localStorage.setItem(LS.repo,  repo);
+  if (name)  localStorage.setItem(LS.name,  name);
+  if (sbUrl) localStorage.setItem(LS.sbUrl, sbUrl);
+  if (sbKey) localStorage.setItem(LS.sbKey, sbKey);
+  updateUserUI();
+  alert('✓ Config saved');
+}
+
+function updateUserUI() {
+  const c = cfg();
+  document.getElementById('user-name').textContent = c.name || 'Setup';
+  document.getElementById('user-avatar').textContent = (c.name || 'U')[0].toUpperCase();
+}
+
+function toggleSecret(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+  const navItem = document.querySelector(`[data-page="${id}"]`);
+  if (navItem) navItem.classList.add('active');
+  if (id === 'leads')     loadLeads();
+  if (id === 'shows')     loadShows();
+  if (id === 'dashboard') loadDashboard();
+}
+
+// ── Supabase API ──────────────────────────────────────────────────────────
+async function sbFetch(path, opts = {}) {
+  const c = cfg();
+  if (!c.sbUrl || !c.sbKey) return null;
+  const res = await fetch(c.sbUrl + '/rest/v1/' + path, {
+    ...opts,
+    headers: {
+      apikey:          c.sbKey,
+      Authorization:  'Bearer ' + c.sbKey,
+      'Content-Type': 'application/json',
+      Prefer:         'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function testSupabase() {
+  const el = document.getElementById('sb-test-result');
+  el.textContent = 'Testing…';
+  const data = await sbFetch('tradeshows?select=id&limit=1');
+  if (data !== null) {
+    el.style.color = 'var(--green)';
+    el.textContent = '✓ Connected to Supabase';
+  } else {
+    el.style.color = 'var(--red)';
+    el.textContent = '✗ Connection failed — check URL and key';
+  }
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────
+let allLeads = [];
+let allShows = [];
+
+async function loadAllData() {
+  await Promise.all([loadLeadsData(), loadShowsData()]);
+  loadDashboard();
+}
+
+async function loadLeadsData() {
+  const data = await sbFetch('leads?select=*&order=created_at.desc&limit=500');
+  allLeads = data || [];
+  document.getElementById('leads-count').textContent = allLeads.length;
+  return allLeads;
+}
+
+async function loadShowsData() {
+  const data = await sbFetch('tradeshows?select=*&order=date_start.asc');
+  allShows = data || [];
+  // Populate show filter dropdown
+  const sel = document.getElementById('filter-show');
+  sel.innerHTML = '<option value="">All Shows</option>';
+  allShows.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name; o.textContent = s.name;
+    sel.appendChild(o);
+  });
+  // Populate scrape modal dropdown
+  const scrSel = document.getElementById('scrape-show-select');
+  scrSel.innerHTML = '<option value="">— choose —</option>';
+  allShows.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.name; o.textContent = s.name;
+    scrSel.appendChild(o);
+  });
+  return allShows;
+}
+
+function loadDashboard() {
+  document.getElementById('stat-total').textContent     = allLeads.length || '—';
+  document.getElementById('stat-emails').textContent    = allLeads.filter(l => l.email).length || '—';
+  document.getElementById('stat-qualified').textContent = allLeads.filter(l => l.status === 'qualified' || l.status === 'opportunity').length || '—';
+  document.getElementById('stat-shows').textContent     = allShows.length || '—';
+
+  // Recent leads
+  const tbody = document.getElementById('recent-leads-body');
+  const recent = allLeads.slice(0, 8);
+  if (!recent.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:32px">No leads yet</td></tr>';
+  } else {
+    tbody.innerHTML = recent.map(l => `
+      <tr onclick="openLeadPanel('${l.id}')" style="cursor:pointer">
+        <td><div class="company-name">${esc(l.company_name)}</div></td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">${l.email ? '✓' : '—'}</td>
+      </tr>`).join('');
+  }
+
+  // Shows overview
+  const stbody = document.getElementById('shows-overview-body');
+  if (!allShows.length) {
+    stbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:32px">No shows added</td></tr>';
+  } else {
+    stbody.innerHTML = allShows.slice(0, 6).map(s => {
+      const leads = allLeads.filter(l => l.tradeshow_name === s.name).length;
+      return `<tr><td><div class="company-name">${esc(s.name)}</div></td>
+        <td style="font-size:12px;color:var(--muted)">${s.date_start || '—'}</td>
+        <td style="text-align:center">${leads}</td></tr>`;
+    }).join('');
+  }
+}
+
+// ── Leads table ───────────────────────────────────────────────────────────
+function loadLeads() {
+  renderLeadsTable(allLeads);
+  document.getElementById('leads-subtitle').textContent = `${allLeads.length} total leads`;
+  // Populate assigned filter
+  const asel = document.getElementById('filter-assigned');
+  const names = [...new Set(allLeads.map(l => l.assigned_to).filter(Boolean))];
+  asel.innerHTML = '<option value="">All Team</option>' +
+    names.map(n => `<option value="${n}">${n}</option>`).join('');
+}
+
+let currentFilter = '';
+function filterLeads(status) {
+  currentFilter = status;
+  showPage('leads');
+  document.getElementById('filter-status').value = status;
+  filterLeadsTable();
+  document.querySelectorAll('[data-filter]').forEach(el => {
+    el.classList.toggle('active', el.dataset.filter === status);
+  });
+}
+
+function filterLeadsTable() {
+  const search  = document.getElementById('lead-search').value.toLowerCase();
+  const show    = document.getElementById('filter-show').value;
+  const status  = document.getElementById('filter-status').value;
+  const assigned = document.getElementById('filter-assigned').value;
+  const filtered = allLeads.filter(l => {
+    if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
+    if (show   && l.tradeshow_name !== show) return false;
+    if (status && l.status !== status) return false;
+    if (assigned && l.assigned_to !== assigned) return false;
+    return true;
+  });
+  renderLeadsTable(filtered);
+  document.getElementById('leads-subtitle').textContent = `${filtered.length} of ${allLeads.length} leads`;
+}
+
+function renderLeadsTable(leads) {
+  const tbody = document.getElementById('leads-table-body');
+  if (!leads.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
+    return;
+  }
+  tbody.innerHTML = leads.map(l => `
+    <tr data-id="${l.id}">
+      <td><input type="checkbox" style="accent-color:var(--accent)" onchange="handleSelect(this,'${l.id}')"></td>
+      <td>
+        <div class="company-cell">
+          <div class="company-avatar">${(l.company_name||'?')[0]}</div>
+          <div>
+            <div class="company-name" style="cursor:pointer" onclick="openLeadPanel('${l.id}')">${esc(l.company_name)}</div>
+            <div class="company-meta">${esc(l.country||'')} ${l.booth_number ? '· Booth '+esc(l.booth_number) : ''}</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
+      <td style="font-size:13px">${esc(l.country||'—')}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>
+      <td>
+        ${l.email ? `<a class="ext-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>
+          <div style="font-size:10px;color:var(--dim)" class="conf-${l.email_confidence||''}">${l.email_confidence||''}</div>`
+          : '<span style="color:var(--dim)">—</span>'}
+      </td>
+      <td>${statusBadge(l.status)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(l.assigned_to||'—')}</td>
+      <td>${priorityBadge(l.priority)}</td>
+      <td>
+        <button class="action-btn" onclick="openLeadPanel('${l.id}')">Edit</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── Lead panel ────────────────────────────────────────────────────────────
+function openLeadPanel(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  const c = cfg();
+  document.getElementById('panel-content').innerHTML = `
+    <div style="margin-bottom:6px;display:flex;gap:8px;align-items:center">
+      ${statusBadge(lead.status)} ${priorityBadge(lead.priority)}
+    </div>
+    <div class="panel-company">${esc(lead.company_name)}</div>
+    <div class="panel-meta">${esc(lead.tradeshow_name||'')} ${lead.booth_number ? '· Booth '+lead.booth_number : ''}</div>
+
+    <div class="panel-section">
+      <div class="panel-section-title">Company Info</div>
+      ${infoRow('Country',  lead.country)}
+      ${infoRow('City',     lead.city)}
+      ${infoRow('Industry', lead.industry)}
+      ${infoRow('Category', lead.category)}
+      ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Contact</div>
+      ${infoRow('Name',  lead.contact_name)}
+      ${lead.email ? `<div class="info-row"><span class="info-label">Email</span><a href="mailto:${lead.email}" class="ext-link">${esc(lead.email)}</a></div>` : infoRow('Email','—')}
+      ${infoRow('Phone', lead.phone)}
+      ${lead.linkedin_url ? `<div class="info-row"><span class="info-label">LinkedIn</span><a href="${lead.linkedin_url}" target="_blank" class="ext-link">↗ Profile</a></div>` : ''}
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Lead Management</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="field">
+          <label>Status</label>
+          <select onchange="updateLead('${lead.id}','status',this.value)">
+            ${['new','contacted','qualified','disqualified','opportunity','closed'].map(s =>
+              `<option value="${s}" ${lead.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Assign To</label>
+          <select onchange="updateLead('${lead.id}','assigned_to',this.value)">
+            <option value="">Unassigned</option>
+            ${c.team.map(m => `<option value="${m}" ${lead.assigned_to===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select onchange="updateLead('${lead.id}','priority',this.value)">
+            ${['high','medium','low'].map(p =>
+              `<option value="${p}" ${lead.priority===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <textarea onblur="updateLead('${lead.id}','notes',this.value)" placeholder="Add notes…">${esc(lead.notes||'')}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('lead-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('lead-panel').classList.remove('open');
+}
+
+async function updateLead(id, field, value) {
+  const update = { [field]: value, updated_by: cfg().name };
+  await sbFetch(`leads?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+  // Update local cache
+  const lead = allLeads.find(l => l.id === id);
+  if (lead) lead[field] = value;
+  if (field === 'status' || field === 'assigned_to') renderLeadsTable(allLeads);
+}
+
+function infoRow(label, value) {
+  return `<div class="info-row"><span class="info-label">${label}</span><span class="info-value">${esc(value||'—')}</span></div>`;
+}
+
+// ── Shows ─────────────────────────────────────────────────────────────────
+function loadShows() {
+  const tbody = document.getElementById('shows-table-body');
+  if (!allShows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:40px">No shows yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allShows.map(s => {
+    const leads = allLeads.filter(l => l.tradeshow_name === s.name).length;
+    return `<tr>
+      <td><div class="company-name">${esc(s.name)}</div></td>
+      <td style="font-size:13px;color:var(--muted)">${esc(s.location||'—')}</td>
+      <td style="font-size:13px;color:var(--muted)">${esc(s.industry||'—')}</td>
+      <td style="font-size:12px;color:var(--muted)">${s.date_start||''}${s.date_end?' → '+s.date_end:''}</td>
+      <td style="text-align:center;font-weight:600">${leads}</td>
+      <td style="text-align:center">${s.attending ? '<span style="color:var(--green)">✓</span>' : '—'}</td>
+      <td><button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openAddShowModal() { openModal('show-modal'); }
+
+async function saveShow() {
+  const data = {
+    name:       document.getElementById('show-name-input').value.trim(),
+    location:   document.getElementById('show-location').value.trim(),
+    industry:   document.getElementById('show-industry').value.trim(),
+    date_start: document.getElementById('show-date-start').value || null,
+    date_end:   document.getElementById('show-date-end').value || null,
+    website:    document.getElementById('show-website').value.trim(),
+    attending:  document.getElementById('show-attending').checked,
+  };
+  if (!data.name) { alert('Show name required'); return; }
+  await sbFetch('tradeshows', { method: 'POST', body: JSON.stringify(data) });
+  closeModal('show-modal');
+  await loadShowsData();
+  loadShows();
+}
+
+function scrapeShow(name) {
+  document.getElementById('scrape-show-select').value = name;
+  openScrapeModal();
+}
+
+// ── GitHub Actions trigger ────────────────────────────────────────────────
+function openScrapeModal() { openModal('scrape-modal'); }
+
+async function triggerScrape() {
+  const c = cfg();
+  if (!c.pat || !c.repo) { alert('Configure GitHub connection in Settings first.'); return; }
+
+  const showName = document.getElementById('scrape-show-select').value ||
+                   document.getElementById('scrape-show-select').options[document.getElementById('scrape-show-select').selectedIndex]?.text || 'Unknown Show';
+  const urls     = document.getElementById('scrape-urls').value.trim();
+  if (!urls) { alert('Enter at least one URL.'); return; }
+
+  const logEl = document.getElementById('scrape-log');
+  logEl.style.display = 'block';
+  logEl.innerHTML = '';
+  const log = (msg, cls='') => {
+    const s = document.createElement('span');
+    s.className = 'log-line ' + cls;
+    s.textContent = `[${new Date().toLocaleTimeString()}]  ${msg}`;
+    logEl.appendChild(s);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  document.getElementById('run-btn').disabled = true;
+  log('Dispatching workflow…', 'info');
+
+  const ts = Date.now();
+  const res = await fetch(`https://api.github.com/repos/${c.repo}/actions/workflows/scrape.yml/dispatches`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${c.pat}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ref: 'main',
+      inputs: {
+        show_name:       showName,
+        urls:            urls,
+        use_llm:         document.getElementById('s-llm').checked     ? 'true':'false',
+        deep_scrape:     document.getElementById('s-deep').checked    ? 'true':'false',
+        find_emails:     document.getElementById('s-emails').checked  ? 'true':'false',
+        linkedin_enrich: document.getElementById('s-linkedin').checked? 'true':'false',
+      },
+    }),
+  });
+
+  if (res.status === 204) {
+    log('✓ Job dispatched! Polling for completion…', 'ok');
+    pollGitHubRun(log, ts);
+  } else {
+    const body = await res.text();
+    log('✗ Error: ' + body.slice(0, 200), 'err');
+    document.getElementById('run-btn').disabled = false;
+  }
+}
+
+async function pollGitHubRun(log, afterTimestamp) {
+  const c = cfg();
+  await sleep(6000);
+  let runId = null;
+  for (let i = 0; i < 15; i++) {
+    await sleep(4000);
+    const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs?per_page=5&event=workflow_dispatch`, {
+      headers: { Authorization: `Bearer ${c.pat}`, Accept: 'application/vnd.github+json' }
+    });
+    const d = await r.json();
+    if (d.workflow_runs?.length) {
+      runId = d.workflow_runs.find(run => {
+        const runTime = new Date(run.created_at).getTime();
+        return runTime >= afterTimestamp;
+      })?.id;
+      if (runId) break;
+    }
+  }
+  if (!runId) { log('Could not find run — check GitHub Actions tab', 'err'); document.getElementById('run-btn').disabled=false; return; }
+  log(`Run #${runId} found — waiting for completion…`, 'info');
+
+  for (let i = 0; i < 40; i++) {
+    await sleep(15000);
+    const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs/${runId}`, {
+      headers: { Authorization: `Bearer ${c.pat}`, Accept: 'application/vnd.github+json' }
+    });
+    const d = await r.json();
+    log(`Status: ${d.status}`, '');
+    if (d.status === 'completed') {
+      if (d.conclusion === 'success') {
+        log('✓ Done! Refreshing leads from database…', 'ok');
+        await loadAllData();
+        loadLeads();
+        document.getElementById('run-btn').disabled = false;
+      } else {
+        log('✗ Run failed: ' + d.conclusion, 'err');
+        document.getElementById('run-btn').disabled = false;
+      }
+      return;
+    }
+  }
+  log('Timed out — check GitHub Actions for status', 'err');
+  document.getElementById('run-btn').disabled = false;
+}
+
+// ── Team members ──────────────────────────────────────────────────────────
+function addTeamMember() {
+  const input = document.getElementById('team-member-input');
+  const name  = input.value.trim();
+  if (!name) return;
+  const team = cfg().team;
+  if (!team.includes(name)) {
+    team.push(name);
+    localStorage.setItem(LS.team, JSON.stringify(team));
+  }
+  input.value = '';
+  renderTeamList();
+}
+
+function renderTeamList() {
+  const team = cfg().team;
+  document.getElementById('team-list').innerHTML = team.map(m =>
+    `<span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 10px;font-size:13px;display:flex;align-items:center;gap:6px">
+      ${m} <button onclick="removeTeamMember('${m}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px">✕</button>
+    </span>`
+  ).join('');
+}
+
+function removeTeamMember(name) {
+  const team = cfg().team.filter(m => m !== name);
+  localStorage.setItem(LS.team, JSON.stringify(team));
+  renderTeamList();
+}
+
+// ── LinkedIn CSV upload ───────────────────────────────────────────────────
+function handleCSVUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    const status = document.getElementById('csv-status');
+    status.textContent = `Parsed ${rows.length} rows — saving to database…`;
+    let saved = 0;
+    for (const row of rows) {
+      const result = await sbFetch('leads', { method: 'POST', body: JSON.stringify(row) });
+      if (result) saved++;
+    }
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Imported ${saved} leads from Sales Navigator CSV`;
+    await loadAllData();
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase().replace(/\s+/g,'_'));
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+    // Map Sales Navigator columns to our schema
+    return {
+      company_name:   obj.company || obj.company_name || '',
+      contact_name:   ((obj.first_name||'') + ' ' + (obj.last_name||'')).trim(),
+      email:          obj.email_address || obj.email || '',
+      phone:          obj.phone || '',
+      linkedin_url:   obj.linkedin_member_url || obj.linkedin_url || '',
+      website:        obj.company_website || obj.website || '',
+      industry:       obj.industry || '',
+      country:        obj.country || '',
+      city:           obj.city || obj.location || '',
+      source_url:     'linkedin_sales_navigator',
+      status:         'new',
+    };
+  }).filter(r => r.company_name);
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+function csvEscape(val) {
+  const s = String(val||'');
+  return /[,"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportLeads() {
+  const leads = allLeads;
+  if (!leads.length) { alert('No leads to export'); return; }
+  const headers = ['company_name','tradeshow_name','booth_number','hall','country','city',
+    'industry','category','email','email_confidence','phone','contact_name','website',
+    'linkedin_url','status','priority','assigned_to','notes'];
+  const csv = [headers.join(','),
+    ...leads.map(l => headers.map(h => csvEscape(l[h])).join(','))
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `showtoship_export_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
+function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+let debounceTimer;
+function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(filterLeadsTable, 200); }
+let selected = new Set();
+function toggleSelectAll(cb) {
+  document.querySelectorAll('#leads-table-body input[type=checkbox]').forEach(c => {
+    c.checked = cb.checked;
+    const id = c.closest('tr').dataset.id;
+    if (cb.checked) selected.add(id); else selected.delete(id);
+  });
+}
+function handleSelect(cb, id) {
+  if (cb.checked) selected.add(id); else selected.delete(id);
+}
+
+function statusBadge(s) {
+  const map = { new:'badge-new', contacted:'badge-contacted', qualified:'badge-qualified',
+    disqualified:'badge-disqualified', opportunity:'badge-opportunity', closed:'badge-closed' };
+  return `<span class="badge ${map[s]||'badge-new'}">${s||'new'}</span>`;
+}
+function priorityBadge(p) {
+  const map = { high:'badge-high', medium:'badge-medium', low:'badge-low' };
+  return `<span class="badge ${map[p]||'badge-medium'}">${p||'medium'}</span>`;
+}
+
+function savePBConfig() {
+  localStorage.setItem('ls_pb_key',      document.getElementById('pb-key').value);
+  localStorage.setItem('ls_pb_search',   document.getElementById('pb-search-id').value);
+  localStorage.setItem('ls_pb_profile',  document.getElementById('pb-profile-id').value);
+  alert('✓ Phantombuster config saved');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(async function init() {
+  updateUserUI();
+  renderTeamList();
+  // Prefill config fields
+  const c = cfg();
+  document.getElementById('cfg-name').value  = c.name;
+  document.getElementById('cfg-repo').value  = c.repo;
+  document.getElementById('cfg-sb-url').value = c.sbUrl;
+  // Load data if Supabase is configured
+  if (c.sbUrl && c.sbKey) await loadAllData();
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  });
+})();
+</script>
+</body>
+</html>

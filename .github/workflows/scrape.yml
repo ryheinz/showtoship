@@ -1,0 +1,120 @@
+name: ShowToShip — Scrape & Enrich
+
+on:
+  workflow_dispatch:
+    inputs:
+      show_name:
+        description: "Tradeshow name (must match a record in Supabase)"
+        required: true
+        type: string
+      urls:
+        description: "Exhibitor list URLs (one per line)"
+        required: true
+        type: string
+      use_llm:
+        description: "LLM extraction (needs OPENAI_API_KEY)"
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      deep_scrape:
+        description: "Scrape individual exhibitor profile pages"
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      find_emails:
+        description: "Phase 3 — hunt for email addresses"
+        default: "true"
+        type: choice
+        options: ["false", "true"]
+      linkedin_enrich:
+        description: "Enrich with LinkedIn via Phantombuster"
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      create_release:
+        description: "Create release with Excel artifact"
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Write URLs file
+        run: |
+          cat > /tmp/urls.txt << 'EOF'
+          ${{ github.event.inputs.urls }}
+          EOF
+
+      - name: Run scraper + email finder
+        env:
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:      ${{ secrets.SUPABASE_KEY }}
+          PHANTOMBUSTER_API_KEY: ${{ secrets.PHANTOMBUSTER_API_KEY }}
+          PB_SEARCH_PHANTOM_ID:  ${{ secrets.PB_SEARCH_PHANTOM_ID }}
+          PB_PROFILE_PHANTOM_ID: ${{ secrets.PB_PROFILE_PHANTOM_ID }}
+          SHOW_NAME:         ${{ github.event.inputs.show_name }}
+        run: |
+          SAFE=$(echo "${SHOW_NAME}" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+          OUTPUT="${SAFE}_$(date +%Y%m%d_%H%M).xlsx"
+
+          ARGS="--urls /tmp/urls.txt --out /tmp/${OUTPUT} --show-name '${SAFE}'"
+
+          [ "${{ github.event.inputs.use_llm }}"      = "true" ] && ARGS="$ARGS --llm"
+          [ "${{ github.event.inputs.deep_scrape }}"  = "true" ] && ARGS="$ARGS --deep"
+          [ "${{ github.event.inputs.find_emails }}"  = "true" ] && ARGS="$ARGS --emails"
+          [ "${{ github.event.inputs.linkedin_enrich }}" = "true" ] && ARGS="$ARGS --linkedin"
+
+          python scraper/run_pipeline.py $ARGS
+
+          echo "OUTPUT_FILE=${OUTPUT}" >> $GITHUB_ENV
+          echo "SAFE_NAME=${SAFE}"    >> $GITHUB_ENV
+
+      - name: Upload Excel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.SAFE_NAME }}-leads
+          path: /tmp/${{ env.OUTPUT_FILE }}
+          retention-days: 90
+
+      - name: Create GitHub Release with Excel
+        if: ${{ github.event.inputs.create_release == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "leads-${{ env.SAFE_NAME }}-${{ github.run_number }}"
+          name: "${{ github.event.inputs.show_name }} — Run #${{ github.run_number }}"
+          body: |
+            ## ShowToShip Results
+            **Show:** ${{ github.event.inputs.show_name }}
+            **LLM:** ${{ github.event.inputs.use_llm }} | **Deep:** ${{ github.event.inputs.deep_scrape }} | **Emails:** ${{ github.event.inputs.find_emails }} | **LinkedIn:** ${{ github.event.inputs.linkedin_enrich }}
+
+            All leads saved to Supabase database. Download Excel below ⬇️
+          files: /tmp/${{ env.OUTPUT_FILE }}

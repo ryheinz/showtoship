@@ -354,11 +354,30 @@ class ExhibitorScraper:
                     "GmbH & Co", "KG", "GbR", "e.V.", "S.L.", "S.p.A.", "SAS",
                     "SARL", "SRL", "Oy", "AB", "APS", "SpA", "Gmbh",
                 )
-                for line in lines:
-                    if len(line) > 2 and line[0].isupper() and not line.startswith(("http", "www", "Tel", "Fax", "Email", "Phone", "Address")):
-                        if any(c in line for c in company_suffixes):
-                            rows.append({"company_name": line, "source": "text_fallback"})
 
+                skip_prefixes = (
+                    "http", "www", "tel", "fax", "email", "phone", "address",
+                    "the", "this", "about", "contact", "menu", "home", "search",
+                    "sign", "login", "register", "copyright", "all rights",
+                    "privacy", "terms", "cookie", "follow", "share",
+                )
+
+                # Collect all capitalized lines that look like company names
+                for line in lines:
+                    if len(line) < 3 or line[0].islower():
+                        continue
+                    if line.lower().startswith(skip_prefixes):
+                        continue
+                    # Has a legal suffix
+                    if any(c in line for c in company_suffixes):
+                        rows.append({"company_name": line, "source": "text_fallback_suffix"})
+                        continue
+                    # Starts with uppercase and has 2+ words (likely a company name)
+                    words = line.split()
+                    if len(words) >= 2 and all(w[0].isupper() for w in words if w[0].isalpha()):
+                        rows.append({"company_name": line, "source": "text_fallback_caps"})
+
+                # Deduplicate
                 seen = set()
                 unique = []
                 for r in rows:
@@ -367,6 +386,7 @@ class ExhibitorScraper:
                         seen.add(n)
                         unique.append(r)
                 rows = unique
+                print(f"  ℹ Text fallback found {len(rows)} potential company names")
 
         except Exception as e:
             print(f"  ✗ Text fallback failed: {e}")

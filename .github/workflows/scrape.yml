@@ -96,7 +96,7 @@ jobs:
           SAFE=$(echo "${SHOW_NAME}" | tr ' ' '_' | tr -cd '[:alnum:]_-')
           OUTPUT="${SAFE}_$(date +%Y%m%d_%H%M).xlsx"
 
-          ARGS="--urls /tmp/urls.txt --out /tmp/${OUTPUT} --show-name '${SAFE}'"
+          ARGS="--urls /tmp/urls.txt --out /tmp/${OUTPUT} --show-name ${SAFE}"
 
           [ "${{ github.event.inputs.use_llm }}" = "true" ] && ARGS="$ARGS --llm"
           [ "${{ github.event.inputs.use_llm }}" = "true" ] && [ -z "${OPENAI_API_KEY}" ] && export LLM_PROVIDER="ollama/llama3"

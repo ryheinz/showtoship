@@ -281,9 +281,53 @@ class ExhibitorScraper:
         return rows
 
     async def _scrape_with_llm_fallback(self, url: str) -> list[dict]:
-        """Use Playwright directly to get the fully rendered page, then extract via LLM."""
+        """Use Playwright to get fully rendered page, then extract via LLM."""
+        if not self.use_llm:
+            return await self._scrape_with_text_fallback(url)
+
+        try:
+            from playwright.async_api import async_playwright
+
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
+                    headless=True,
+                    args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+                )
+                page = await browser.new_page()
+                await page.goto(url, wait_until="networkidle", timeout=30000)
+
+                for _ in range(10):
+                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    await page.wait_for_timeout(1500)
+
+                await page.wait_for_load_state("networkidle", timeout=10000)
+                text = await page.evaluate("document.body.innerText")
+                await browser.close()
+
+            import json
+            from crawl4ai.extraction_strategy import LLMExtractionStrategy
+            from crawl4ai import LLMConfig
+
+            strategy = LLMExtractionStrategy(
+                llm_config=LLMConfig(provider=self.llm_provider),
+                instruction=EXHIBITOR_LLM_PROMPT,
+                extraction_type="block",
+            )
+            result = await strategy.extract(text, ignore_llm=True)
+            if result:
+                data = json.loads(result) if isinstance(result, str) else result
+                if isinstance(data, list):
+                    for r in data:
+                        r.setdefault("source", "llm_fallback")
+                    return data
+        except Exception as e:
+            print(f"  ✗ LLM fallback failed: {e}")
+
+        return await self._scrape_with_text_fallback(url)
+
+    async def _scrape_with_text_fallback(self, url: str) -> list[dict]:
+        """Extract company names from raw page text using heuristics."""
         from playwright.async_api import async_playwright
-        from playwright.async_api import TimeoutError as PlaywrightTimeout
 
         rows = []
         try:
@@ -295,27 +339,26 @@ class ExhibitorScraper:
                 page = await browser.new_page()
                 await page.goto(url, wait_until="networkidle", timeout=30000)
 
-                # Scroll to trigger lazy load
                 for _ in range(10):
                     await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                     await page.wait_for_timeout(1500)
 
-                # Wait for any remaining network requests
                 await page.wait_for_load_state("networkidle", timeout=10000)
-
-                # Get the full rendered text content
                 text = await page.evaluate("document.body.innerText")
                 await browser.close()
 
-                # Extract exhibitors via regex/pattern matching
                 lines = [l.strip() for l in text.split("\n") if l.strip()]
-                # Look for company-like entries (multiple consecutive capitalized lines)
-                for i, line in enumerate(lines):
-                    if len(line) > 2 and line[0].isupper() and not line.startswith(("http", "www", "Tel", "Fax", "Email")):
-                        if any(c in line for c in ("GmbH", "AG", "Inc", "Corp", "Ltd", "& Co", "e.K.", "SE", "LLC")):
-                            rows.append({"company_name": line, "source": "full_page_text"})
+                company_suffixes = (
+                    "GmbH", "AG", "Inc", "Corp", "Ltd", "& Co", "e.K.", "SE", "LLC",
+                    "LLP", "SA", "S.A.", "BV", "B.V.", "NV", "N.V.", "PLC", "Pty",
+                    "GmbH & Co", "KG", "GbR", "e.V.", "S.L.", "S.p.A.", "SAS",
+                    "SARL", "SRL", "Oy", "AB", "APS", "SpA", "Gmbh",
+                )
+                for line in lines:
+                    if len(line) > 2 and line[0].isupper() and not line.startswith(("http", "www", "Tel", "Fax", "Email", "Phone", "Address")):
+                        if any(c in line for c in company_suffixes):
+                            rows.append({"company_name": line, "source": "text_fallback"})
 
-                # Deduplicate
                 seen = set()
                 unique = []
                 for r in rows:
@@ -326,7 +369,7 @@ class ExhibitorScraper:
                 rows = unique
 
         except Exception as e:
-            print(f"  ✗ Full-page fallback failed: {e}")
+            print(f"  ✗ Text fallback failed: {e}")
 
         return rows
 

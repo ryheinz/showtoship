@@ -195,6 +195,7 @@ class EmailFinder:
         self.max_pages = max_pages_per_company
         self.verify_mx = verify_mx
         self.use_web_search = use_web_search
+        self._crawler = None
         self._browser_cfg = BrowserConfig(
             headless=True,
             verbose=False,
@@ -202,6 +203,11 @@ class EmailFinder:
         )
 
     # ── fetch a single URL and return raw text ───────────────────────────────
+
+    async def _ensure_crawler(self):
+        if self._crawler is None:
+            self._crawler = await AsyncWebCrawler(config=self._browser_cfg).__aenter__()
+        return self._crawler
 
     async def _fetch_text(self, url: str) -> str:
         run_cfg = CrawlerRunConfig(
@@ -213,14 +219,18 @@ class EmailFinder:
             wait_for_images=False,
         )
         try:
-            async with AsyncWebCrawler(config=self._browser_cfg) as crawler:
-                result = await crawler.arun(url=url, config=run_cfg)
+            crawler = await self._ensure_crawler()
+            result = await crawler.arun(url=url, config=run_cfg)
             if result.success:
-                # Combine HTML source + markdown (catches obfuscated emails too)
                 return (result.html or "") + "\n" + (result.markdown or "")
         except Exception:
             pass
         return ""
+
+    async def close(self):
+        if self._crawler is not None:
+            await self._crawler.__aexit__(None, None, None)
+            self._crawler = None
 
     # ── Strategy 1: scrape company website ───────────────────────────────────
 
@@ -365,9 +375,12 @@ class EmailFinder:
                 print(f"  [{done:>3}/{total}] {found}  {result.get('company_name','')[:50]}")
                 return result
 
-        tasks = [bounded(r) for r in rows]
-        enriched = await asyncio.gather(*tasks, return_exceptions=True)
-        return [r for r in enriched if isinstance(r, dict)]
+        try:
+            tasks = [bounded(r) for r in rows]
+            enriched = await asyncio.gather(*tasks, return_exceptions=True)
+            return [r for r in enriched if isinstance(r, dict)]
+        finally:
+            await self.close()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

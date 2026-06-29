@@ -70,8 +70,12 @@ async def wait_for_phantom(session: aiohttp.ClientSession,
                             container_id: str, timeout_s: int = 300) -> Optional[list]:
     """Poll until phantom completes, return output rows."""
     start = asyncio.get_event_loop().time()
-    while True:
+    max_attempts = max(2, timeout_s // 15 + 1)
+    for _ in range(max_attempts):
         await asyncio.sleep(15)
+        if asyncio.get_event_loop().time() - start > timeout_s:
+            print("  Phantom timed out")
+            return None
         async with session.get(
             f"{PHANTOMBUSTER_API}/containers/fetch-output",
             headers=_pb_headers(),
@@ -82,7 +86,6 @@ async def wait_for_phantom(session: aiohttp.ClientSession,
             data = await r.json()
             status = data.get("status")
             if status == "finished":
-                # Fetch result CSV/JSON
                 result_url = data.get("resultObject")
                 if result_url:
                     return await fetch_phantom_results(session, result_url)
@@ -91,9 +94,8 @@ async def wait_for_phantom(session: aiohttp.ClientSession,
                 print(f"  Phantom error: {data.get('output','')[-200:]}")
                 return None
 
-        if asyncio.get_event_loop().time() - start > timeout_s:
-            print("  Phantom timed out")
-            return None
+    print("  Phantom timed out (max attempts)")
+    return None
 
 
 async def fetch_phantom_results(session: aiohttp.ClientSession, url: str) -> list:
@@ -212,12 +214,16 @@ async def enrich_lead_with_linkedin(lead: dict) -> dict:
 
 async def enrich_all(leads: list[dict], concurrency: int = 2) -> list[dict]:
     """Enrich a list of leads with LinkedIn data."""
-    semaphore = asyncio.Semaphore(concurrency)  # respect LinkedIn rate limits
+    semaphore = asyncio.Semaphore(concurrency)
 
     async def bounded(lead):
         async with semaphore:
-            await asyncio.sleep(2)  # polite delay between requests
-            return await enrich_lead_with_linkedin(lead)
+            await asyncio.sleep(2)
+            try:
+                return await enrich_lead_with_linkedin(lead)
+            except Exception as e:
+                print(f"  LinkedIn enrichment error for {lead.get('company_name','')}: {e}")
+                return lead
 
     return await asyncio.gather(*[bounded(l) for l in leads])
 

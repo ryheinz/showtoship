@@ -358,19 +358,23 @@ a.ext-link:hover{text-decoration:underline}
         <select class="filter-select" id="filter-assigned" onchange="filterLeadsTable(true)">
           <option value="">All Team</option>
         </select>
+        <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
       <table>
         <thead><tr>
           <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
-          <th>Company</th>
-          <th>Booth</th>
-          <th>Show</th>
-          <th>Country</th>
-          <th>Category</th>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Assigned</th>
-          <th>Priority</th>
+          <th onclick="sortBy('company_name')" style="cursor:pointer">Company <span class="sort-arrow" data-sort="company_name"></span></th>
+          <th onclick="sortBy('booth_number')" style="cursor:pointer">Booth <span class="sort-arrow" data-sort="booth_number"></span></th>
+          <th onclick="sortBy('tradeshow_name')" style="cursor:pointer">Show <span class="sort-arrow" data-sort="tradeshow_name"></span></th>
+          <th onclick="sortBy('country')" style="cursor:pointer">Country <span class="sort-arrow" data-sort="country"></span></th>
+          <th onclick="sortBy('category')" style="cursor:pointer">Category <span class="sort-arrow" data-sort="category"></span></th>
+          <th onclick="sortBy('email')" style="cursor:pointer">Email <span class="sort-arrow" data-sort="email"></span></th>
+          <th onclick="sortBy('status')" style="cursor:pointer">Status <span class="sort-arrow" data-sort="status"></span></th>
+          <th onclick="sortBy('assigned_to')" style="cursor:pointer">Assigned <span class="sort-arrow" data-sort="assigned_to"></span></th>
+          <th onclick="sortBy('priority')" style="cursor:pointer">Priority <span class="sort-arrow" data-sort="priority"></span></th>
           <th></th>
         </tr></thead>
         <tbody id="leads-table-body">
@@ -658,18 +662,20 @@ function showPage(id) {
 async function sbFetch(path, opts = {}) {
   const c = cfg();
   if (!c.sbUrl || !c.sbKey) return null;
-  const res = await fetch(c.sbUrl + '/rest/v1/' + path, {
-    ...opts,
-    headers: {
-      apikey:          c.sbKey,
-      Authorization:  'Bearer ' + c.sbKey,
-      'Content-Type': 'application/json',
-      Prefer:         'return=representation',
-      ...(opts.headers || {}),
-    },
-  });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(c.sbUrl + '/rest/v1/' + path, {
+      ...opts,
+      headers: {
+        apikey:          c.sbKey,
+        Authorization:  'Bearer ' + c.sbKey,
+        'Content-Type': 'application/json',
+        Prefer:         'return=representation',
+        ...(opts.headers || {}),
+      },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
 }
 
 async function testSupabase() {
@@ -690,6 +696,7 @@ let allLeads = [];
 let allShows = [];
 
 async function loadAllData() {
+  selected.clear();
   await Promise.all([loadLeadsData(), loadShowsData()]);
   loadDashboard();
 }
@@ -795,19 +802,33 @@ function filterLeads(status) {
   });
 }
 
-function filterLeadsTable(resetPage) {
-  if (resetPage) pageNum = 1;
+function getFilteredLeads() {
   const search  = document.getElementById('lead-search').value.toLowerCase();
   const show    = document.getElementById('filter-show').value;
   const status  = document.getElementById('filter-status').value;
   const assigned = document.getElementById('filter-assigned').value;
-  let filtered = allLeads.filter(l => {
+  let result = allLeads.filter(l => {
     if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
     if (show   && l.tradeshow_name !== show) return false;
     if (status && l.status !== status) return false;
     if (assigned && l.assigned_to !== assigned) return false;
     return true;
   });
+  if (sortField) {
+    result.sort((a, b) => {
+      const va = (a[sortField] || '').toString().toLowerCase();
+      const vb = (b[sortField] || '').toString().toLowerCase();
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+  return result;
+}
+
+function filterLeadsTable(resetPage) {
+  if (resetPage) pageNum = 1;
+  selected.clear();
+  document.getElementById('select-all').checked = false;
+  let filtered = getFilteredLeads();
   const total = filtered.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pageNum > pages) pageNum = pages;
@@ -934,7 +955,7 @@ async function updateLead(id, field, value) {
   // Update local cache
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead[field] = value;
-  if (field === 'status' || field === 'assigned_to') renderLeadsTable(allLeads);
+  if (field === 'status' || field === 'assigned_to') filterLeadsTable();
 }
 
 function infoRow(label, value) {
@@ -978,6 +999,9 @@ async function saveShow() {
     attending:  document.getElementById('show-attending').checked,
   };
   if (!data.name) { alert('Show name required'); return; }
+  if (data.date_start && data.date_end && data.date_end < data.date_start) {
+    alert('End date must be after start date'); return;
+  }
   await sbFetch('tradeshows', { method: 'POST', body: JSON.stringify(data) });
   closeModal('show-modal');
   await loadShowsData();
@@ -989,7 +1013,7 @@ async function deleteShow(id, name) {
   await sbFetch(`tradeshows?id=eq.${id}`, { method: 'DELETE' });
   await loadShowsData();
   loadShows();
-  await renderLeadsTable(allLeads);
+  filterLeadsTable();
 }
 
 function scrapeShow(name) {
@@ -1055,10 +1079,12 @@ async function triggerScrape() {
 }
 
 async function pollGitHubRun(log, afterTimestamp) {
+  pollCancelled = false;
   const c = cfg();
   await sleep(6000);
   let runId = null;
   for (let i = 0; i < 15; i++) {
+    if (pollCancelled) { document.getElementById('run-btn').disabled=false; return; }
     await sleep(4000);
     const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs?per_page=5&event=workflow_dispatch`, {
       headers: { Authorization: `Bearer ${c.pat}`, Accept: 'application/vnd.github+json' }
@@ -1076,6 +1102,7 @@ async function pollGitHubRun(log, afterTimestamp) {
   log(`Run #${runId} found — waiting for completion…`, 'info');
 
   for (let i = 0; i < 40; i++) {
+    if (pollCancelled) { document.getElementById('run-btn').disabled=false; return; }
     await sleep(15000);
     const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs/${runId}`, {
       headers: { Authorization: `Bearer ${c.pat}`, Accept: 'application/vnd.github+json' }
@@ -1181,7 +1208,7 @@ function csvEscape(val) {
 }
 
 function exportLeads() {
-  const leads = allLeads;
+  const leads = getFilteredLeads();
   if (!leads.length) { alert('No leads to export'); return; }
   const headers = ['company_name','tradeshow_name','booth_number','hall','country','city',
     'industry','category','email','email_confidence','phone','contact_name','website',
@@ -1197,7 +1224,10 @@ function exportLeads() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id) {
+  if (id === 'scrape-modal') pollCancelled = true;
+  document.getElementById(id).classList.remove('open');
+}
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
 function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function toggleTheme() {
@@ -1212,18 +1242,96 @@ function initTheme() {
   document.documentElement.setAttribute('data-theme', saved);
   document.getElementById('theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
 }
+let sortField = '';
+let sortDir = '';
+function sortBy(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'asc'; }
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+  const arrow = document.querySelector(`.sort-arrow[data-sort="${field}"]`);
+  if (arrow) arrow.textContent = sortDir === 'asc' ? ' ▲' : ' ▼';
+  filterLeadsTable(true);
+}
 let debounceTimer;
 function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => filterLeadsTable(true), 200); }
 let selected = new Set();
+let pollCancelled = false;
+
+function updateBulkButtons() {
+  const count = selected.size;
+  document.getElementById('selected-count').textContent = count ? `${count} selected` : '';
+  document.getElementById('bulk-status-btn').disabled = count === 0;
+  document.getElementById('bulk-assign-btn').disabled = count === 0;
+  document.getElementById('bulk-export-btn').disabled = count === 0;
+}
+
 function toggleSelectAll(cb) {
   document.querySelectorAll('#leads-table-body input[type=checkbox]').forEach(c => {
     c.checked = cb.checked;
     const id = c.closest('tr').dataset.id;
     if (cb.checked) selected.add(id); else selected.delete(id);
   });
+  updateBulkButtons();
 }
 function handleSelect(cb, id) {
   if (cb.checked) selected.add(id); else selected.delete(id);
+  updateBulkButtons();
+}
+
+async function bulkStatus() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  const statuses = ['new','contacted','qualified','disqualified','opportunity','closed'];
+  const current = new Set();
+  ids.forEach(id => {
+    const lead = allLeads.find(l => l.id === id);
+    if (lead && lead.status) current.add(lead.status);
+  });
+  const suggested = current.size === 1 ? [...current][0] : 'new';
+  const s = prompt(`Set status for ${ids.length} lead(s) (${statuses.join(', ')}):`, suggested);
+  if (!s || !statuses.includes(s)) return;
+  for (const id of ids) {
+    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ status: s, updated_by: cfg().name }) });
+    const lead = allLeads.find(l => l.id === id);
+    if (lead) lead.status = s;
+  }
+  selected.clear();
+  updateBulkButtons();
+  filterLeadsTable();
+}
+
+async function bulkAssign() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  const team = cfg().team;
+  const options = team.map(m => `${m}`).join(', ');
+  const s = prompt(`Assign ${ids.length} lead(s) to (${options}):`, team[0] || '');
+  if (!s) return;
+  for (const id of ids) {
+    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ assigned_to: s, updated_by: cfg().name }) });
+    const lead = allLeads.find(l => l.id === id);
+    if (lead) lead.assigned_to = s;
+  }
+  selected.clear();
+  updateBulkButtons();
+  filterLeadsTable();
+}
+
+function exportSelected() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  const leads = allLeads.filter(l => ids.includes(l.id));
+  if (!leads.length) { alert('No leads to export'); return; }
+  const headers = ['company_name','tradeshow_name','booth_number','hall','country','city',
+    'industry','category','email','email_confidence','phone','contact_name','website',
+    'linkedin_url','status','priority','assigned_to','notes'];
+  const csv = [headers.join(','),
+    ...leads.map(l => headers.map(h => csvEscape(l[h])).join(','))
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `showtoship_export_selected_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
 }
 
 function statusBadge(s) {
@@ -1252,6 +1360,10 @@ function savePBConfig() {
   document.getElementById('cfg-name').value  = c.name;
   document.getElementById('cfg-repo').value  = c.repo;
   document.getElementById('cfg-sb-url').value = c.sbUrl;
+  if (c.pat) document.getElementById('cfg-pat').placeholder = '•••••••• configured';
+  if (c.sbKey) document.getElementById('cfg-sb-key').placeholder = '•••••••• configured';
+  const pbKey = localStorage.getItem('ls_pb_key');
+  if (pbKey) document.getElementById('pb-key').placeholder = '•••••••• configured';
   // Load data if Supabase is configured
   if (c.sbUrl && c.sbKey) await loadAllData();
   // Close modals on overlay click

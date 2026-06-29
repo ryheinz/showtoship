@@ -344,6 +344,7 @@ a.ext-link:hover{text-decoration:underline}
         <thead><tr>
           <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
           <th>Company</th>
+          <th>Booth</th>
           <th>Show</th>
           <th>Country</th>
           <th>Category</th>
@@ -354,9 +355,25 @@ a.ext-link:hover{text-decoration:underline}
           <th></th>
         </tr></thead>
         <tbody id="leads-table-body">
-          <tr><td colspan="10" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
+          <tr><td colspan="11" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
         </tbody>
       </table>
+      <div class="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
+        <div>
+          <span id="page-info">0–0 of 0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span>Rows:</span>
+          <select onchange="setPageSize(this.value)" style="padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px">
+            <option value="10">10</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+          <button id="prev-page" class="action-btn" onclick="changePage(-1)" disabled>←</button>
+          <button id="next-page" class="action-btn" onclick="changePage(1)" disabled>→</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -734,6 +751,21 @@ function loadLeads() {
 }
 
 let currentFilter = '';
+let pageSize = 50;
+let pageNum = 1;
+
+function setPageSize(size) {
+  pageSize = parseInt(size);
+  pageNum = 1;
+  filterLeadsTable();
+  document.getElementById('leads-subtitle').textContent = '';
+}
+
+function changePage(delta) {
+  pageNum = Math.max(1, pageNum + delta);
+  filterLeadsTable();
+}
+
 function filterLeads(status) {
   currentFilter = status;
   showPage('leads');
@@ -745,25 +777,36 @@ function filterLeads(status) {
 }
 
 function filterLeadsTable() {
+  pageNum = 1;
   const search  = document.getElementById('lead-search').value.toLowerCase();
   const show    = document.getElementById('filter-show').value;
   const status  = document.getElementById('filter-status').value;
   const assigned = document.getElementById('filter-assigned').value;
-  const filtered = allLeads.filter(l => {
+  let filtered = allLeads.filter(l => {
     if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
     if (show   && l.tradeshow_name !== show) return false;
     if (status && l.status !== status) return false;
     if (assigned && l.assigned_to !== assigned) return false;
     return true;
   });
-  renderLeadsTable(filtered);
-  document.getElementById('leads-subtitle').textContent = `${filtered.length} of ${allLeads.length} leads`;
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pageNum > pages) pageNum = pages;
+  const start = (pageNum - 1) * pageSize;
+  const page = filtered.slice(start, start + pageSize);
+  renderLeadsTable(page);
+  document.getElementById('leads-subtitle').textContent =
+    `${total} leads · Page ${pageNum} of ${pages}`;
+  document.getElementById('page-info').textContent =
+    `${start+1}–${Math.min(start+pageSize, total)} of ${total}`;
+  document.getElementById('prev-page').disabled = pageNum <= 1;
+  document.getElementById('next-page').disabled = pageNum >= pages;
 }
 
 function renderLeadsTable(leads) {
   const tbody = document.getElementById('leads-table-body');
   if (!leads.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
     return;
   }
   tbody.innerHTML = leads.map(l => `
@@ -778,6 +821,7 @@ function renderLeadsTable(leads) {
           </div>
         </div>
       </td>
+      <td style="font-size:13px;color:var(--muted)">${esc(l.booth_number||'—')}</td>
       <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
       <td style="font-size:13px">${esc(l.country||'—')}</td>
       <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>

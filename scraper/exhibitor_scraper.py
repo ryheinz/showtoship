@@ -23,7 +23,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig
 from crawl4ai.extraction_strategy import LLMExtractionStrategy, JsonCssExtractionStrategy
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -199,7 +199,7 @@ class ExhibitorScraper:
     def _list_strategy(self):
         if self.use_llm:
             return LLMExtractionStrategy(
-                provider=self.llm_provider,
+                llm_config=LLMConfig(provider=self.llm_provider),
                 instruction=EXHIBITOR_LLM_PROMPT,
                 extraction_type="block",
             )
@@ -207,7 +207,7 @@ class ExhibitorScraper:
 
     def _detail_strategy(self):
         return LLMExtractionStrategy(
-            provider=self.llm_provider,
+            llm_config=LLMConfig(provider=self.llm_provider),
             instruction=DETAIL_PAGE_PROMPT,
             extraction_type="block",
         )
@@ -227,12 +227,18 @@ class ExhibitorScraper:
             page_timeout=45000,
             remove_overlay_elements=True,
             excluded_tags=["nav", "footer", "script", "style"],
-            # Scroll to load lazy-loaded exhibitors
             js_code="""
-                window.scrollTo(0, document.body.scrollHeight);
-                await new Promise(r => setTimeout(r, 2000));
-                window.scrollTo(0, document.body.scrollHeight);
-                await new Promise(r => setTimeout(r, 1000));
+                const scroll = async () => {
+                    for (let i = 0; i < 10; i++) {
+                        window.scrollTo(0, document.body.scrollHeight);
+                        await new Promise(r => setTimeout(r, 1500));
+                        window.dispatchEvent(new Event('scroll'));
+                        document.querySelectorAll('button, a').forEach(el => {
+                            if (/load/i.test(el.textContent)) el.click();
+                        });
+                    }
+                };
+                await scroll();
             """,
             wait_for_images=False,
         )

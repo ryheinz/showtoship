@@ -61,6 +61,8 @@ jobs:
         run: pip install playwright
       - name: Install playwright browsers
         run: python -m playwright install --with-deps chromium
+      - name: Install lxml build deps
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-dev libxslt-dev
       - name: Install remaining deps
         run: pip install -r requirements.txt
 

@@ -894,7 +894,10 @@ function loadShows() {
       <td style="font-size:12px;color:var(--muted)">${s.date_start||''}${s.date_end?' → '+s.date_end:''}</td>
       <td style="text-align:center;font-weight:600">${leads}</td>
       <td style="text-align:center">${s.attending ? '<span style="color:var(--green)">✓</span>' : '—'}</td>
-      <td><button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button></td>
+      <td>
+        <button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button>
+        <button class="action-btn" style="margin-left:4px;background:var(--danger,#e74c3c)" onclick="deleteShow('${esc(s.id)}','${esc(s.name)}')">✕</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -916,6 +919,14 @@ async function saveShow() {
   closeModal('show-modal');
   await loadShowsData();
   loadShows();
+}
+
+async function deleteShow(id, name) {
+  if (!confirm(`Delete "${name}" and unlink its leads?`)) return;
+  await sbFetch(`tradeshows?id=eq.${id}`, { method: 'DELETE' });
+  await loadShowsData();
+  loadShows();
+  await renderLeadsTable(allLeads);
 }
 
 function scrapeShow(name) {

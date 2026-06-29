@@ -343,10 +343,10 @@ a.ext-link:hover{text-decoration:underline}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="lead-search" placeholder="Search company, email, country…" oninput="debounceFilter()">
         </div>
-        <select class="filter-select" id="filter-show" onchange="filterLeadsTable()">
+        <select class="filter-select" id="filter-show" onchange="filterLeadsTable(true)">
           <option value="">All Shows</option>
         </select>
-        <select class="filter-select" id="filter-status" onchange="filterLeadsTable()">
+        <select class="filter-select" id="filter-status" onchange="filterLeadsTable(true)">
           <option value="">All Statuses</option>
           <option value="new">New</option>
           <option value="contacted">Contacted</option>
@@ -355,7 +355,7 @@ a.ext-link:hover{text-decoration:underline}
           <option value="opportunity">Opportunity</option>
           <option value="closed">Closed</option>
         </select>
-        <select class="filter-select" id="filter-assigned" onchange="filterLeadsTable()">
+        <select class="filter-select" id="filter-assigned" onchange="filterLeadsTable(true)">
           <option value="">All Team</option>
         </select>
       </div>
@@ -377,21 +377,21 @@ a.ext-link:hover{text-decoration:underline}
           <tr><td colspan="11" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
         </tbody>
       </table>
-      <div class="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
-        <div>
-          <span id="page-info">0–0 of 0</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span>Rows:</span>
-          <select onchange="setPageSize(this.value)" style="padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px">
-            <option value="10">10</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-          <button id="prev-page" class="action-btn" onclick="changePage(-1)" disabled>←</button>
-          <button id="next-page" class="action-btn" onclick="changePage(1)" disabled>→</button>
-        </div>
+    </div>
+    <div class="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;font-size:12px;color:var(--muted)">
+      <div>
+        <span id="page-info">0–0 of 0</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span>Rows:</span>
+        <select onchange="setPageSize(this.value)" style="padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--surface);color:var(--text)">
+          <option value="10">10</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+        <button id="prev-page" class="action-btn" onclick="changePage(-1)" disabled>←</button>
+        <button id="next-page" class="action-btn" onclick="changePage(1)" disabled>→</button>
       </div>
     </div>
   </div>
@@ -789,14 +789,14 @@ function filterLeads(status) {
   currentFilter = status;
   showPage('leads');
   document.getElementById('filter-status').value = status;
-  filterLeadsTable();
+  filterLeadsTable(true);
   document.querySelectorAll('[data-filter]').forEach(el => {
     el.classList.toggle('active', el.dataset.filter === status);
   });
 }
 
-function filterLeadsTable() {
-  pageNum = 1;
+function filterLeadsTable(resetPage) {
+  if (resetPage) pageNum = 1;
   const search  = document.getElementById('lead-search').value.toLowerCase();
   const show    = document.getElementById('filter-show').value;
   const status  = document.getElementById('filter-status').value;
@@ -1213,7 +1213,7 @@ function initTheme() {
   document.getElementById('theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
 }
 let debounceTimer;
-function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(filterLeadsTable, 200); }
+function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => filterLeadsTable(true), 200); }
 let selected = new Set();
 function toggleSelectAll(cb) {
   document.querySelectorAll('#leads-table-body input[type=checkbox]').forEach(c => {

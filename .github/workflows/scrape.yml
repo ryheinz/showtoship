@@ -55,21 +55,12 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
-            libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
-            libxdamage1 libxfixes3 libxrandr2 libgbm1 \
-            libpango-1.0-0 libcairo2 libasound2
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip wheel setuptools
+          pip install playwright
+          python -m playwright install --with-deps chromium
           pip install -r requirements.txt
-      - name: Install Playwright browsers
-        run: |
-          python -m playwright install chromium
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

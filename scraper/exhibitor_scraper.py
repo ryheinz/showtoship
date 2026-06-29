@@ -52,14 +52,15 @@ EXHIBITOR_SCHEMA = {
     "baseSelector": (
         ".exhibitor-item, .company-card, .exhibitor-card, "
         "tr.exhibitor-row, li.exhibitor, [data-exhibitor], "
-        ".booth-item, .participant-item, .vendor-item"
+        ".booth-item, .participant-item, .vendor-item, "
+        "table tbody tr, table tr"
     ),
 
     "fields": [
         # Company name — try common title selectors
         {
             "name": "company_name",
-            "selector": "h2, h3, h4, .company-name, .exhibitor-name, .name, .title, strong",
+            "selector": "h2, h3, h4, .company-name, .exhibitor-name, .name, .title, strong, td:first-child, td:nth-child(1)",
             "type": "text"
         },
         # Booth / stand number
@@ -77,7 +78,7 @@ EXHIBITOR_SCHEMA = {
         # Country / nationality
         {
             "name": "country",
-            "selector": ".country, .nation, .flag-label, [data-country]",
+            "selector": ".country, .nation, .flag-label, [data-country], td:nth-child(2)",
             "type": "text"
         },
         # Product category / sector
@@ -95,7 +96,7 @@ EXHIBITOR_SCHEMA = {
         # Website (from href attribute)
         {
             "name": "website",
-            "selector": "a.website, a.company-link, a[href*='http']:not([href*='exhibitor'])",
+            "selector": "a.website, a.company-link, a[href*='http']:not([href*='exhibitor']), td:nth-child(3) a",
             "type": "attribute",
             "attribute": "href"
         },

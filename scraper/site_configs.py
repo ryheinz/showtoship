@@ -34,7 +34,7 @@ CONFIGS: dict[str, dict] = {
                 "country_code": {"attr": "countryCode"},
                 "city": {"attr": "city"},
                 "hall": {"path": "stands/stand", "attr": "hallNr"},
-                "stand": {"path": "stands/stand", "attr": "standNr"},
+                "booth_number": {"path": "stands/stand", "attr": "standNr"},
                 "description": {"path": "description/teaser", "text": True},
             },
             "init_page": "https://www.smm-hamburg.com/exhibit-visit/exhibitor-directory",

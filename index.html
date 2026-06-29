@@ -30,12 +30,29 @@
   --mono:'Instrument Mono',monospace;
   --r:8px;
 }
+[data-theme="light"]{
+  --bg:#F4F5F8;
+  --surface:#FFFFFF;
+  --surface2:#EBEDF2;
+  --surface3:#DEE0E8;
+  --border:#D4D6E0;
+  --border2:#B8BBC8;
+  --text:#1A1D28;
+  --muted:#5E6174;
+  --dim:#9093A6;
+  --accent:#4A7DE7;
+  --accent2:#0EA5A0;
+  --green:#10B981;
+  --amber:#D97706;
+  --red:#EF4444;
+  --purple:#8B5CF6;
+}
 html{font-size:15px}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 
 /* ── Topbar ── */
 .topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:50}
-.logo{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;padding:4px 0}
+.logo{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.02em;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;line-height:1}
 .logo-icon{display:none}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
 .user-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 8px;font-size:13px;cursor:pointer}
@@ -196,11 +213,13 @@ a.ext-link:hover{text-decoration:underline}
 <!-- ══ TOPBAR ══════════════════════════════════════════════════════ -->
 <header class="topbar">
   <div class="logo">
-    <img src="logo.svg" alt="ShowToShip" style="height:36px;width:auto;display:block">
+    <img src="logo.svg" alt="ShowToShip" style="height:50px;width:auto;display:block">
+    <span style="font-size:10px;color:var(--dim);letter-spacing:.05em;margin-top:-4px">by RyHeinz</span>
   </div>
   <div style="height:20px;width:1px;background:var(--border);margin:0 4px"></div>
   <span style="font-size:13px;color:var(--muted)" id="active-show-label">No show selected</span>
   <div class="topbar-right">
+    <button class="btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px 6px;border-radius:6px">🌙</button>
     <button class="btn-sm" onclick="openScrapeModal()">+ New Scrape</button>
     <button class="btn-outline" onclick="showPage('config')">⚙ Settings</button>
     <div class="user-chip" onclick="showPage('config')">
@@ -1181,6 +1200,18 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
 function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toggleTheme() {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', isLight ? '' : 'light');
+  localStorage.setItem('theme', isLight ? '' : 'light');
+  document.getElementById('theme-toggle').textContent = isLight ? '🌙' : '☀️';
+}
+function initTheme() {
+  const saved = localStorage.getItem('theme') || '';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+}
 let debounceTimer;
 function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(filterLeadsTable, 200); }
 let selected = new Set();
@@ -1227,6 +1258,7 @@ function savePBConfig() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
   });
+  initTheme();
 })();
 </script>
 </body>

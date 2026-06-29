@@ -55,18 +55,14 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip wheel setuptools
-          pip install playwright
-          python -m playwright install --with-deps chromium
-          pip install -r requirements.txt
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+      - name: Upgrade pip
+        run: pip install --upgrade pip wheel setuptools
+      - name: Install playwright
+        run: pip install playwright
+      - name: Install playwright browsers
+        run: python -m playwright install --with-deps chromium
+      - name: Install remaining deps
+        run: pip install -r requirements.txt
 
       - name: Write URLs file
         run: |

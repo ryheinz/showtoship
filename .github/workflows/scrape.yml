@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       use_llm:
-        description: "LLM extraction (uses Ollama local, or OpenAI if OPENAI_API_KEY set)"
+        description: "LLM extraction (auto: Ollama local, or OpenAI if OPENAI_API_KEY set)"
         default: "false"
         type: choice
         options: ["false", "true"]

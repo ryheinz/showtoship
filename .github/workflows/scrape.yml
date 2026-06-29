@@ -74,11 +74,15 @@ jobs:
           EOF
 
       - name: Install Ollama (for LLM extraction)
-        if: ${{ github.event.inputs.use_llm == 'true' && secrets.OPENAI_API_KEY == '' }}
+        if: ${{ github.event.inputs.use_llm == 'true' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-          ollama pull llama3
-          ollama serve &>/dev/null &
+          if [ -z "$OPENAI_API_KEY" ]; then
+            curl -fsSL https://ollama.com/install.sh | sh
+            ollama pull llama3
+            ollama serve &>/dev/null &
+          fi
 
       - name: Run scraper + email finder
         env:

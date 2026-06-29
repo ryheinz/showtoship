@@ -390,9 +390,7 @@ class ExhibitorScraper:
                         lead = {"source_url": url, "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M")}
                         field_map = cfg.get("field_map", {})
                         for field_name, mapping in field_map.items():
-                            if "attr" in mapping:
-                                val = org.attrib.get(mapping["attr"], "")
-                            elif "path" in mapping:
+                            if "path" in mapping:
                                 elem = org.find(mapping["path"])
                                 if elem is not None:
                                     if mapping.get("text"):
@@ -401,6 +399,10 @@ class ExhibitorScraper:
                                         val = elem.attrib.get(mapping.get("attr", ""), "")
                                 else:
                                     val = ""
+                            elif "attr" in mapping:
+                                val = org.attrib.get(mapping["attr"], "")
+                            else:
+                                val = ""
                             lead[field_name] = val
                         rows.append(lead)
 

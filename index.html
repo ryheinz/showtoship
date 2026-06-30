@@ -691,6 +691,7 @@ function showPage(id) {
 async function sbFetch(path, opts = {}) {
   const c = cfg();
   if (!c.sbUrl || !c.sbKey) return null;
+  const method = opts.method || 'GET';
   try {
     const res = await fetch(c.sbUrl + '/rest/v1/' + path, {
       ...opts,
@@ -702,9 +703,16 @@ async function sbFetch(path, opts = {}) {
         ...(opts.headers || {}),
       },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(()=>'');
+      console.error(`sbFetch ${method} ${path} → ${res.status}: ${body.slice(0,200)}`);
+      return null;
+    }
     return res.json();
-  } catch { return null; }
+  } catch (e) {
+    console.error(`sbFetch ${method} ${path} →`, e);
+    return null;
+  }
 }
 
 async function testSupabase() {

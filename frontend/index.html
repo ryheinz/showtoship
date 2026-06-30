@@ -541,8 +541,8 @@ a.ext-link:hover{text-decoration:underline}
       <div class="modal" style="width:400px">
         <div class="modal-head"><h3>Add User</h3><button class="modal-close" onclick="closeModal('add-user-modal')">✕</button></div>
         <div class="modal-body">
-          <div class="field"><label>Email</label><input type="email" id="new-user-email" placeholder="user@example.com"></div>
-          <div class="field"><label>Password</label><input type="password" id="new-user-password" placeholder="Min 6 characters"></div>
+          <div class="field"><label>Email</label><input type="email" id="new-user-email" placeholder="user@example.com" onkeydown="if(event.key==='Enter')adminCreateUser()"></div>
+          <p style="font-size:13px;color:var(--muted);margin:8px 0 0">They'll receive an invite email to set their password.</p>
           <div class="form-actions">
             <button class="btn-outline" onclick="closeModal('add-user-modal')">Cancel</button>
             <button class="btn-sm" onclick="adminCreateUser()">Create</button>
@@ -1763,11 +1763,9 @@ function showAddUser() { openModal('add-user-modal'); }
 
 async function adminCreateUser() {
   const email = document.getElementById('new-user-email').value.trim();
-  const password = document.getElementById('new-user-password').value;
   const errorEl = document.getElementById('add-user-error');
   errorEl.style.display = 'none';
-  if (!email || !password) { errorEl.textContent = 'Email and password required'; errorEl.style.display = 'block'; return; }
-  if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters'; errorEl.style.display = 'block'; return; }
+  if (!email) { errorEl.textContent = 'Email required'; errorEl.style.display = 'block'; return; }
 
   const fnUrl = localStorage.getItem('ls_admin_fn');
   if (!fnUrl) { errorEl.textContent = 'Set admin function URL in Settings'; errorEl.style.display = 'block'; return; }
@@ -1776,7 +1774,7 @@ async function adminCreateUser() {
     const res = await fetch(fnUrl + '/users', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email }),
     });
     if (!res.ok) {
       const d = await res.json().catch(()=>({}));
@@ -1786,7 +1784,6 @@ async function adminCreateUser() {
     }
     closeModal('add-user-modal');
     document.getElementById('new-user-email').value = '';
-    document.getElementById('new-user-password').value = '';
     loadAdminUsers();
   } catch (e) {
     errorEl.textContent = 'Error: ' + e.message;

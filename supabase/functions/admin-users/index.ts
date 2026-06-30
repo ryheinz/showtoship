@@ -70,12 +70,11 @@ serve(async (req) => {
     return json({ users })
   }
 
-  // POST /users - create a new user
+  // POST /users - invite a new user by email
   if (req.method === 'POST' && path.endsWith('/users')) {
-    const { email, password } = await req.json()
-    const { data, error } = await adminClient.auth.admin.createUser({
-      email, password, email_confirm: true,
-    })
+    const { email } = await req.json()
+    if (!email) return json({ error: 'Email required' }, 400)
+    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email)
     if (error) return json({ error: error.message }, 400)
     if (data.user) {
       await supabase.from('user_profiles').insert({

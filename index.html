@@ -1038,11 +1038,12 @@ async function saveShow() {
 }
 
 async function deleteShow(id, name) {
-  if (!confirm(`Delete "${name}" and unlink its leads?`)) return;
+  if (!confirm(`Delete "${name}" and all ${allLeads.filter(l=>l.tradeshow_id===id).length} leads?`)) return;
+  await sbFetch(`leads?tradeshow_id=eq.${id}`, { method: 'DELETE' });
   await sbFetch(`tradeshows?id=eq.${id}`, { method: 'DELETE' });
-  await loadShowsData();
+  await loadAllData();
+  loadLeads();
   loadShows();
-  filterLeadsTable();
 }
 
 function scrapeShow(name) {

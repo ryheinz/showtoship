@@ -1785,6 +1785,7 @@ async function adminCreateUser() {
     closeModal('add-user-modal');
     document.getElementById('new-user-email').value = '';
     loadAdminUsers();
+    alert(`✓ ${email} was invited. They'll receive an email to set up their account.`);
   } catch (e) {
     errorEl.textContent = 'Error: ' + e.message;
     errorEl.style.display = 'block';

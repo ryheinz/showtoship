@@ -90,7 +90,7 @@ serve(async (req) => {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              from: 'ShowToShip <notifications@your-domain.com>',
+              from: Deno.env.get('RESEND_FROM') || 'ShowToShip <onboarding@resend.dev>',
               to: [user.email],
               subject: 'New user invited to ShowToShip',
               text: `${email} was invited to ShowToShip by ${user.email}.`,

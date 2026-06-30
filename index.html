@@ -430,6 +430,11 @@ a.ext-link:hover{text-decoration:underline}
         <select class="filter-select" id="filter-assigned" onchange="filterLeadsTable(true)">
           <option value="">All Team</option>
         </select>
+        <select class="filter-select" id="filter-email" onchange="filterLeadsTable(true)">
+          <option value="">All Emails</option>
+          <option value="has">Has Email</option>
+          <option value="none">No Email</option>
+        </select>
         <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
@@ -908,6 +913,8 @@ function getFilteredLeads() {
     if (show   && l.tradeshow_name?.toLowerCase() !== show.toLowerCase()) return false;
     if (status && l.status !== status) return false;
     if (assigned && l.assigned_to !== assigned) return false;
+    if (document.getElementById('filter-email').value === 'has' && !l.email) return false;
+    if (document.getElementById('filter-email').value === 'none' && l.email) return false;
     return true;
   });
   if (sortField) {

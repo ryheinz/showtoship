@@ -369,7 +369,10 @@ class EmailFinder:
         async def bounded(row):
             nonlocal done
             async with semaphore:
-                result = await self._find_for_one(row)
+                try:
+                    result = await asyncio.wait_for(self._find_for_one(row), timeout=60)
+                except asyncio.TimeoutError:
+                    result = row
                 done += 1
                 found = "✓" if result.get("email") else "–"
                 print(f"  [{done:>3}/{total}] {found}  {result.get('company_name','')[:50]}")

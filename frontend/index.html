@@ -587,8 +587,8 @@ a.ext-link:hover{text-decoration:underline}
             <label class="switch"><input type="checkbox" id="s-deep"><span class="slider"></span></label>
           </div>
           <div class="toggle-row">
-            <div class="toggle-info"><strong>Find Email Addresses</strong><span>Hunt emails on company websites + web</span></div>
-            <label class="switch"><input type="checkbox" id="s-emails" checked><span class="slider"></span></label>
+            <div class="toggle-info"><strong>Find Email Addresses</strong><span>Hunt emails on company websites + web (slow for large lists)</span></div>
+            <label class="switch"><input type="checkbox" id="s-emails"><span class="slider"></span></label>
           </div>
           <div class="toggle-row" style="border-bottom:none">
             <div class="toggle-info"><strong>LinkedIn Enrichment</strong><span>Via Phantombuster (requires setup)</span></div>
@@ -1111,9 +1111,9 @@ async function triggerScrape() {
 async function pollGitHubRun(log, afterTimestamp) {
   pollCancelled = false;
   const c = cfg();
-  await sleep(6000);
+  await sleep(10000);
   let runId = null;
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 30; i++) {
     if (pollCancelled) { document.getElementById('run-btn').disabled=false; return; }
     await sleep(4000);
     const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs?per_page=5&event=workflow_dispatch`, {
@@ -1131,7 +1131,7 @@ async function pollGitHubRun(log, afterTimestamp) {
   if (!runId) { log('Could not find run — check GitHub Actions tab', 'err'); document.getElementById('run-btn').disabled=false; return; }
   log(`Run #${runId} found — waiting for completion…`, 'info');
 
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 180; i++) {
     if (pollCancelled) { document.getElementById('run-btn').disabled=false; return; }
     await sleep(15000);
     const r = await fetch(`https://api.github.com/repos/${c.repo}/actions/runs/${runId}`, {

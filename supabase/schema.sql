@@ -119,19 +119,48 @@ CREATE OR REPLACE TRIGGER leads_updated_at
   BEFORE UPDATE ON leads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- ── User profiles (extends Supabase Auth) ────────────────────
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT NOT NULL,
+  role       TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Auto-create profile on signup (triggered by auth.users insert)
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id, email, role)
+  VALUES (NEW.id, NEW.email,
+    CASE WHEN (SELECT COUNT(*) FROM public.user_profiles) = 0 THEN 'admin' ELSE 'user' END
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Make the first user an admin (run once after setting up auth)
+-- UPDATE user_profiles SET role = 'admin' WHERE id = (SELECT id FROM auth.users ORDER BY created_at LIMIT 1);
+
 -- ── Row Level Security ────────────────────────────────────────
--- Enables public access (anyone with anon key can read/write).
--- For production with sensitive data, enable auth and replace
--- the USING expressions with `auth.role() = 'authenticated'`.
+-- Only authenticated users can access data.
 ALTER TABLE leads          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tradeshows     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scrape_jobs    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles  ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public access — leads"          ON leads          FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public access — tradeshows"     ON tradeshows     FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public access — lead_activities" ON lead_activities FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Public access — scrape_jobs"    ON scrape_jobs    FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Auth access — leads"          ON leads          FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Auth access — tradeshows"     ON tradeshows     FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Auth access — lead_activities" ON lead_activities FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Auth access — scrape_jobs"    ON scrape_jobs    FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Auth access — user_profiles"  ON user_profiles  FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 
 -- ── Sample tradeshow data ────────────────────────────────────
 INSERT INTO tradeshows (name, location, country, industry, date_start, date_end, attending)

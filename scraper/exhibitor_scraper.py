@@ -478,8 +478,10 @@ class ExhibitorScraper:
                             lead[field_name] = val
                         rows.append(lead)
 
-                    has_more = entities.get("hasMore") == "true"
-                    if not has_more:
+                    has_more = entities.get("hasMore")
+                    if has_more == "false":
+                        break
+                    if not has_more and len(entities.findall("organization")) < page_size:
                         break
                     start += page_size
 

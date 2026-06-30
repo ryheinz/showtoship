@@ -82,6 +82,22 @@ serve(async (req) => {
         email: data.user.email,
         role: 'user',
       }).maybeSingle()
+      // Notify the admin who created this user
+      const resendKey = Deno.env.get('RESEND_API_KEY')
+      if (resendKey && user.email) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'ShowToShip <notifications@your-domain.com>',
+              to: [user.email],
+              subject: 'New user invited to ShowToShip',
+              text: `${email} was invited to ShowToShip by ${user.email}.`,
+            }),
+          })
+        } catch { /* notification is best-effort */ }
+      }
     }
     return json(data)
   }

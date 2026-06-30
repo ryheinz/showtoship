@@ -235,6 +235,26 @@ a.ext-link:hover{text-decoration:underline}
 .sidebar-overlay{display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5)}
 .sidebar-overlay.open{display:block}
 
+/* ── Auth overlay ── */
+.auth-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.auth-overlay.hidden{display:none}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px;width:380px;max-width:90vw;box-shadow:var(--shadow-lg)}
+.auth-box h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.auth-box p{font-size:13px;color:var(--muted);margin-bottom:20px}
+.auth-box .field{margin-bottom:14px}
+.auth-box .auth-toggle{font-size:12px;color:var(--accent);cursor:pointer;text-align:center;margin-top:12px}
+.auth-box .auth-toggle:hover{text-decoration:underline}
+.auth-box .error{color:var(--red);font-size:12px;margin-bottom:10px;display:none}
+.auth-logo{text-align:center;margin-bottom:20px}
+.auth-logo svg{height:32px;width:auto}
+
+/* ── Admin page ── */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.user-row:last-child{border-bottom:none}
+.user-email{font-weight:500}
+.user-role{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--surface2);color:var(--dim)}
+.user-role.admin{background:rgba(91,141,239,.15);color:var(--accent)}
+
 /* ── Responsive ── */
 @media(max-width:1024px){
   .stats-row{grid-template-columns:repeat(2,1fr)}
@@ -288,9 +308,10 @@ a.ext-link:hover{text-decoration:underline}
     <button class="btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px;transition:all .15s">🌙</button>
     <button class="btn-sm" onclick="openScrapeModal()">+ New Scrape</button>
     <button class="btn-outline" onclick="showPage('config')">⚙ Settings</button>
-    <div class="user-chip" onclick="showPage('config')">
+    <div class="user-chip" style="cursor:default">
       <div class="avatar" id="user-avatar">?</div>
       <span id="user-name" style="font-size:13px">Setup</span>
+      <button onclick="authLogout()" title="Sign out" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 2px;line-height:1">⏻</button>
     </div>
   </div>
 </header>
@@ -346,6 +367,10 @@ a.ext-link:hover{text-decoration:underline}
     <a class="nav-item" onclick="exportLeads()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Export Excel
+    </a>
+    <a class="nav-item" onclick="showPage('admin')" data-page="admin" id="nav-admin" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Admin
     </a>
     <a class="nav-item" onclick="showPage('config')" data-page="config">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 1 1-14.14 0"/></svg>
@@ -499,6 +524,35 @@ a.ext-link:hover{text-decoration:underline}
     </div>
   </div>
 
+  <!-- ── Admin ── -->
+  <div class="page" id="page-admin">
+    <div class="page-header">
+      <div><h1>Admin</h1><p>Manage users</p></div>
+    </div>
+    <div class="table-wrap" style="max-width:600px">
+      <div class="table-toolbar">
+        <span style="font-weight:600;font-size:14px">Users</span>
+        <button class="btn-sm" style="margin-left:auto" onclick="showAddUser()">+ Add User</button>
+      </div>
+      <div id="admin-user-list" style="padding:4px 0"><p style="padding:24px;text-align:center;color:var(--dim)">Loading…</p></div>
+    </div>
+    <!-- Add user modal -->
+    <div class="modal-overlay" id="add-user-modal">
+      <div class="modal" style="width:400px">
+        <div class="modal-head"><h3>Add User</h3><button class="modal-close" onclick="closeModal('add-user-modal')">✕</button></div>
+        <div class="modal-body">
+          <div class="field"><label>Email</label><input type="email" id="new-user-email" placeholder="user@example.com"></div>
+          <div class="field"><label>Password</label><input type="password" id="new-user-password" placeholder="Min 6 characters"></div>
+          <div class="form-actions">
+            <button class="btn-outline" onclick="closeModal('add-user-modal')">Cancel</button>
+            <button class="btn-sm" onclick="adminCreateUser()">Create</button>
+          </div>
+          <div id="add-user-error" style="color:var(--red);font-size:12px;margin-top:10px;display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── LinkedIn Tools ── -->
   <div class="page" id="page-linkedin">
     <div class="page-header">
@@ -581,6 +635,10 @@ a.ext-link:hover{text-decoration:underline}
               <button class="eye-btn" onclick="toggleSecret('cfg-sb-key')">👁</button>
             </div>
           </div>
+          <div class="field"><label>Admin Function URL <small style="font-weight:400;text-transform:none;color:var(--dim)">Edge Function for user mgmt</small></label>
+            <input type="text" id="cfg-admin-fn" placeholder="https://xxxx.functions.supabase.co/admin-users">
+          </div>
+          <button class="btn-outline" onclick="saveAdminFn()" style="align-self:flex-start">Save Admin URL</button>
           <button class="btn-outline" onclick="testSupabase()" style="align-self:flex-start">Test Connection</button>
           <div id="sb-test-result" style="font-size:13px"></div>
         </div>
@@ -681,6 +739,36 @@ a.ext-link:hover{text-decoration:underline}
   </div>
 </div>
 
+<!-- ══ AUTH OVERLAY ═══════════════════════════════════════════════ -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg viewBox="0 0 220 28" fill="none">
+        <g transform="translate(0,2)">
+          <path d="M3 18 L6 10 L10 7 L24 7 L28 10 L31 18 Z" fill="var(--accent)"/>
+          <rect x="11" y="3" width="12" height="5" rx="1" fill="var(--accent)" opacity="0.7"/>
+          <rect x="12.5" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)"/>
+          <rect x="16" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)"/>
+          <rect x="19.5" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)" opacity="0.5"/>
+          <line x1="22" y1=".5" x2="22" y2="3" stroke="var(--accent2)" stroke-width="1.2"/>
+          <circle cx="22" cy="-.5" r="1.5" fill="var(--accent2)"/>
+          <path d="M31 16 Q37 14 42 17 Q46 19 50 16" stroke="var(--accent2)" stroke-width=".8" opacity=".3"/>
+        </g>
+        <text x="44" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="18" font-weight="700" fill="var(--text)">Show</text>
+        <text x="90" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="12" font-weight="500" fill="var(--muted)">to</text>
+        <text x="112" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="18" font-weight="700" fill="var(--accent)">Ship</text>
+      </svg>
+    </div>
+    <h2>Sign in</h2>
+    <p>Sign in to access your tradeshow leads</p>
+    <div class="error" id="auth-error"></div>
+    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authLogin()"></div>
+    <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="password" onkeydown="if(event.key==='Enter')authLogin()"></div>
+    <button class="btn-sm" onclick="authLogin()" style="width:100%;padding:12px;font-size:14px;margin-top:4px" id="auth-btn">Sign In</button>
+    <div class="auth-toggle" id="auth-toggle" onclick="toggleAuthMode()">Don't have an account? <strong>Create one</strong></div>
+  </div>
+</div>
+
 <!-- ══ JAVASCRIPT ═══════════════════════════════════════════════════ -->
 <script>
 // ── Config ────────────────────────────────────────────────────────────────
@@ -688,6 +776,7 @@ const LS = {
   pat:   'ls_pat',   repo: 'ls_repo', name: 'ls_name',
   sbUrl: 'ls_sb_url', sbKey: 'ls_sb_key',
   team:  'ls_team',
+  at: 'ls_at', rt: 'ls_rt', ue: 'ls_ue', ur: 'ls_ur',
 };
 
 const cfg = () => ({
@@ -736,24 +825,47 @@ function showPage(id) {
   if (id === 'leads')     loadLeads();
   if (id === 'shows')     loadShows();
   if (id === 'dashboard') loadDashboard();
+  if (id === 'admin')     loadAdminUsers();
 }
 
 // ── Supabase API ──────────────────────────────────────────────────────────
+function getAuthToken() {
+  return localStorage.getItem(LS.at);
+}
+
 async function sbFetch(path, opts = {}) {
   const c = cfg();
   if (!c.sbUrl || !c.sbKey) return null;
   const method = opts.method || 'GET';
+  const token = getAuthToken();
   try {
     const res = await fetch(c.sbUrl + '/rest/v1/' + path, {
       ...opts,
       headers: {
         apikey:          c.sbKey,
-        Authorization:  'Bearer ' + c.sbKey,
-        'Content-Type': 'application/json',
-        Prefer:         'return=representation',
+        Authorization:   token ? 'Bearer ' + token : 'Bearer ' + c.sbKey,
+        'Content-Type':  'application/json',
+        Prefer:          'return=representation',
         ...(opts.headers || {}),
       },
     });
+    if (res.status === 401 && token) {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        const newToken = getAuthToken();
+        const res2 = await fetch(c.sbUrl + '/rest/v1/' + path, {
+          ...opts,
+          headers: {
+            apikey: c.sbKey, Authorization: 'Bearer ' + newToken,
+            'Content-Type': 'application/json', Prefer: 'return=representation',
+            ...(opts.headers || {}),
+          },
+        });
+        if (res2.ok) return res2.json();
+      }
+      showAuth();
+      return null;
+    }
     if (!res.ok) {
       const body = await res.text().catch(()=>'');
       console.error(`sbFetch ${method} ${path} → ${res.status}: ${body.slice(0,200)}`);
@@ -1459,6 +1571,11 @@ function priorityBadge(p) {
   return `<span class="badge ${map[p]||'badge-medium'}">${p||'medium'}</span>`;
 }
 
+function saveAdminFn() {
+  localStorage.setItem('ls_admin_fn', document.getElementById('cfg-admin-fn').value.trim());
+  alert('✓ Admin function URL saved');
+}
+
 function savePBConfig() {
   localStorage.setItem('ls_pb_key',      document.getElementById('pb-key').value);
   localStorage.setItem('ls_pb_search',   document.getElementById('pb-search-id').value);
@@ -1466,26 +1583,268 @@ function savePBConfig() {
   alert('✓ Phantombuster config saved');
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────
+let authMode = 'login';
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.querySelector('#auth-overlay h2').textContent = authMode === 'login' ? 'Sign in' : 'Create account';
+  document.querySelector('#auth-overlay p').textContent = authMode === 'login' ? 'Sign in to access your tradeshow leads' : 'Create an account to get started';
+  document.getElementById('auth-btn').textContent = authMode === 'login' ? 'Sign In' : 'Create Account';
+  document.getElementById('auth-toggle').innerHTML = authMode === 'login'
+    ? `Don't have an account? <strong>Create one</strong>`
+    : `Already have an account? <strong>Sign in</strong>`;
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+function showAuth() {
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+
+function hideAuth() {
+  document.getElementById('auth-overlay').classList.add('hidden');
+}
+
+async function authLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorEl = document.getElementById('auth-error');
+  errorEl.style.display = 'none';
+  if (!email || !password) { errorEl.textContent = 'Email and password required'; errorEl.style.display = 'block'; return; }
+
+  const c = cfg();
+  if (!c.sbUrl || !c.sbKey) { errorEl.textContent = 'Configure Supabase in Settings first'; errorEl.style.display = 'block'; return; }
+
+  document.getElementById('auth-btn').disabled = true;
+  try {
+    if (authMode === 'register') {
+      const res = await fetch(c.sbUrl + '/auth/v1/signup', {
+        method: 'POST',
+        headers: { apikey: c.sbKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const d = await res.json();
+      if (d.error || !d.id) {
+        errorEl.textContent = d.msg || d.error_description || d.message || 'Registration failed';
+        errorEl.style.display = 'block';
+        document.getElementById('auth-btn').disabled = false;
+        return;
+      }
+      // Try to sign in immediately if auto-confirm is on
+      if (d.access_token) {
+        localStorage.setItem(LS.at, d.access_token);
+        localStorage.setItem(LS.rt, d.refresh_token);
+        localStorage.setItem(LS.ue, email);
+        // Check role
+        const profile = await sbFetch('user_profiles?select=role&id=eq.' + d.user?.id + '&limit=1').catch(()=>null);
+        localStorage.setItem(LS.ur, profile?.[0]?.role || 'user');
+        await afterLogin();
+        return;
+      }
+      errorEl.textContent = 'Account created! Check your email to confirm. You can then sign in.';
+      errorEl.style.color = 'var(--green)';
+      errorEl.style.display = 'block';
+      authMode = 'login';
+      document.getElementById('auth-btn').textContent = 'Sign In';
+      document.getElementById('auth-toggle').innerHTML = `Don't have an account? <strong>Create one</strong>`;
+      document.getElementById('auth-btn').disabled = false;
+      return;
+    }
+
+    const res = await fetch(c.sbUrl + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { apikey: c.sbKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const d = await res.json();
+    if (d.error || d.error_description) {
+      errorEl.textContent = d.error_description || d.msg || d.message || 'Login failed';
+      errorEl.style.display = 'block';
+      document.getElementById('auth-btn').disabled = false;
+      return;
+    }
+    localStorage.setItem(LS.at, d.access_token);
+    localStorage.setItem(LS.rt, d.refresh_token);
+    localStorage.setItem(LS.ue, email);
+    // Fetch role
+    const profile = await sbFetch('user_profiles?select=role&limit=1').catch(()=>null);
+    localStorage.setItem(LS.ur, profile?.[0]?.role || 'user');
+    await afterLogin();
+  } catch (e) {
+    errorEl.textContent = 'Connection error: ' + e.message;
+    errorEl.style.display = 'block';
+    document.getElementById('auth-btn').disabled = false;
+  }
+}
+
+async function afterLogin() {
+  document.getElementById('auth-btn').disabled = false;
+  hideAuth();
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  if (isAdmin()) document.getElementById('nav-admin').style.display = '';
+  updateUserUI();
+  await loadAllData();
+}
+
+async function refreshSession() {
+  const rt = localStorage.getItem(LS.rt);
+  if (!rt) return false;
+  const c = cfg();
+  try {
+    const res = await fetch(c.sbUrl + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { apikey: c.sbKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: rt }),
+    });
+    const d = await res.json();
+    if (d.access_token) {
+      localStorage.setItem(LS.at, d.access_token);
+      localStorage.setItem(LS.rt, d.refresh_token);
+      return true;
+    }
+    return false;
+  } catch { return false; }
+}
+
+function authLogout() {
+  localStorage.removeItem(LS.at);
+  localStorage.removeItem(LS.rt);
+  localStorage.removeItem(LS.ue);
+  localStorage.removeItem(LS.ur);
+  showAuth();
+}
+
+function isAdmin() {
+  return localStorage.getItem(LS.ur) === 'admin';
+}
+
+// ── Admin ──────────────────────────────────────────────────────────────────
+async function loadAdminUsers() {
+  const list = document.getElementById('admin-user-list');
+  list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">Loading…</p>';
+  try {
+    const url = localStorage.getItem('ls_admin_fn') || '/api/admin-users';
+    // Try edge function first, fall back to local API
+    const c = cfg();
+    const fnUrl = localStorage.getItem('ls_admin_fn');
+    if (!fnUrl) {
+      list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">Set your Edge Function URL in Settings to enable user management</p>';
+      return;
+    }
+    const res = await fetch(fnUrl + '/users', {
+      headers: { Authorization: 'Bearer ' + getAuthToken() },
+    });
+    if (!res.ok) { list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--red)">Error loading users</p>'; return; }
+    const data = await res.json();
+    if (!data.users || !data.users.length) {
+      list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">No users found</p>';
+      return;
+    }
+    const currentEmail = localStorage.getItem(LS.ue);
+    list.innerHTML = data.users.map(u => `
+      <div class="user-row">
+        <div>
+          <div class="user-email">${esc(u.email)} ${u.email === currentEmail ? '<span style="color:var(--dim);font-size:11px">(you)</span>' : ''}</div>
+          <div style="font-size:11px;color:var(--dim)">Created: ${new Date(u.created_at).toLocaleDateString()}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="user-role${u.role === 'admin' ? ' admin' : ''}">${u.role || 'user'}</span>
+          ${u.email !== currentEmail ? `<button class="action-btn" style="color:var(--red)" onclick="adminDeleteUser('${u.id}','${esc(u.email)}')">✕</button>` : ''}
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--red)">Error: ' + e.message + '</p>';
+  }
+}
+
+function showAddUser() { openModal('add-user-modal'); }
+
+async function adminCreateUser() {
+  const email = document.getElementById('new-user-email').value.trim();
+  const password = document.getElementById('new-user-password').value;
+  const errorEl = document.getElementById('add-user-error');
+  errorEl.style.display = 'none';
+  if (!email || !password) { errorEl.textContent = 'Email and password required'; errorEl.style.display = 'block'; return; }
+  if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters'; errorEl.style.display = 'block'; return; }
+
+  const fnUrl = localStorage.getItem('ls_admin_fn');
+  if (!fnUrl) { errorEl.textContent = 'Set admin function URL in Settings'; errorEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch(fnUrl + '/users', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(()=>({}));
+      errorEl.textContent = d.error || 'Failed to create user';
+      errorEl.style.display = 'block';
+      return;
+    }
+    closeModal('add-user-modal');
+    document.getElementById('new-user-email').value = '';
+    document.getElementById('new-user-password').value = '';
+    loadAdminUsers();
+  } catch (e) {
+    errorEl.textContent = 'Error: ' + e.message;
+    errorEl.style.display = 'block';
+  }
+}
+
+async function adminDeleteUser(id, email) {
+  if (!confirm(`Delete user "${email}"? This cannot be undone.`)) return;
+  const fnUrl = localStorage.getItem('ls_admin_fn');
+  if (!fnUrl) { alert('Set admin function URL in Settings'); return; }
+  try {
+    const res = await fetch(fnUrl + '/users/' + id, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + getAuthToken() },
+    });
+    if (!res.ok) { alert('Failed to delete user'); return; }
+    loadAdminUsers();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 (async function init() {
-  updateUserUI();
-  renderTeamList();
   // Prefill config fields
   const c = cfg();
+  const ue = localStorage.getItem(LS.ue);
+  const at = localStorage.getItem(LS.at);
+  if (ue) document.getElementById('user-name').textContent = ue.split('@')[0];
+  if (c.name) document.getElementById('user-name').textContent = c.name;
   document.getElementById('cfg-name').value  = c.name;
   document.getElementById('cfg-repo').value  = c.repo;
   document.getElementById('cfg-sb-url').value = c.sbUrl;
+  document.getElementById('cfg-admin-fn').value = localStorage.getItem('ls_admin_fn') || '';
   if (c.pat) document.getElementById('cfg-pat').placeholder = '•••••••• configured';
   if (c.sbKey) document.getElementById('cfg-sb-key').placeholder = '•••••••• configured';
   const pbKey = localStorage.getItem('ls_pb_key');
   if (pbKey) document.getElementById('pb-key').placeholder = '•••••••• configured';
-  // Load data if Supabase is configured
-  if (c.sbUrl && c.sbKey) await loadAllData();
-  // Close modals on overlay click
+  initTheme();
+
+  // Check auth
+  if (c.sbUrl && c.sbKey) {
+    if (at) {
+      const refreshed = await refreshSession().catch(()=>false);
+      if (refreshed || at) {
+        hideAuth();
+        if (isAdmin()) document.getElementById('nav-admin').style.display = '';
+        renderTeamList();
+        await loadAllData();
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+          overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+        });
+        return;
+      }
+    }
+    showAuth();
+  }
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
   });
-  initTheme();
 })();
 </script>
 </body>

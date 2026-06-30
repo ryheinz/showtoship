@@ -732,7 +732,7 @@ async function loadAllData() {
 }
 
 async function loadLeadsData() {
-  const data = await sbFetch('leads?select=*&order=created_at.desc&limit=500');
+  const data = await sbFetch('leads?select=*&order=created_at.desc&limit=5000');
   allLeads = data || [];
   document.getElementById('leads-count').textContent = allLeads.length;
   return allLeads;

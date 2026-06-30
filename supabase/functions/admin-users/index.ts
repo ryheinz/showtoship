@@ -19,13 +19,19 @@ serve(async (req) => {
   const authHeader = req.headers.get('Authorization')!
   if (!authHeader) return json({ error: 'Unauthorized' }, 401)
 
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  if (!supabaseAnonKey) return json({ error: 'Missing SUPABASE_ANON_KEY env' }, 500)
+  if (!supabaseUrl) return json({ error: 'Missing SUPABASE_URL env' }, 500)
+
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
+    supabaseUrl,
+    supabaseAnonKey,
     { global: { headers: { Authorization: authHeader } } }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: getUserError } = await supabase.auth.getUser()
+  if (getUserError) return json({ error: 'Auth getUser failed: ' + getUserError.message }, 500)
   if (!user) return json({ error: 'Unauthorized' }, 401)
 
   const { data: profile } = await supabase
@@ -34,12 +40,12 @@ serve(async (req) => {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') return json({ error: 'Forbidden' }, 403)
+  if (profile?.role !== 'admin') return json({ error: 'Forbidden - not admin' }, 403)
 
-  const adminClient = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SERVICE_ROLE_KEY')!
-  )
+  const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
+  if (!serviceRoleKey) return json({ error: 'Missing SERVICE_ROLE_KEY secret' }, 500)
+
+  const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
   const url = new URL(req.url)
   const path = url.pathname.replace(/\/$/, '')
@@ -47,7 +53,7 @@ serve(async (req) => {
   // GET /users - list all users
   if (req.method === 'GET' && path.endsWith('/users')) {
     const { data, error } = await adminClient.auth.admin.listUsers()
-    if (error) return json({ error: error.message }, 500)
+    if (error) return json({ error: 'listUsers: ' + error.message }, 500)
     const userIds = data.users.map(u => u.id)
     const { data: profiles } = await supabase
       .from('user_profiles')

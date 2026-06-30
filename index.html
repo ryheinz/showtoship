@@ -59,7 +59,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* ── Topbar ── */
 .topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:50}
 .logo{display:flex;align-items:center;gap:12px;cursor:default;user-select:none}
-.logo-svg{height:22px;width:auto;display:block}
+.logo-svg{height:32px;width:auto;display:block}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
 .user-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;font-size:12px;cursor:pointer;transition:all .15s}
 .user-chip:hover{border-color:var(--border2);background:var(--surface3)}
@@ -223,12 +223,47 @@ a.ext-link:hover{text-decoration:underline}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+
+/* ── Hamburger ── */
+.hamburger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:4px}
+.hamburger span{display:block;width:18px;height:2px;background:var(--text);border-radius:2px;transition:all .2s}
+.hamburger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* ── Sidebar overlay ── */
+.sidebar-overlay{display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5)}
+.sidebar-overlay.open{display:block}
+
+/* ── Responsive ── */
+@media(max-width:1024px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .page{grid-template-columns:1fr!important}
+}
+@media(max-width:768px){
+  body{grid-template-columns:1fr}
+  .hamburger{display:flex}
+  .sidebar{position:fixed;left:-240px;top:56px;bottom:0;width:220px;z-index:70;transition:left .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.3)}
+  .sidebar.open{left:0}
+  .stats-row{grid-template-columns:1fr}
+  .page{padding:16px}
+  .table-toolbar{flex-direction:column;align-items:stretch}
+  .search-box{min-width:0}
+}
+@media(max-width:480px){
+  .topbar-right .btn-sm,.topbar-right .btn-outline{display:none}
+  .topbar-right .user-chip span{display:none}
+  .logo-svg{height:26px}
+}
 </style>
 </head>
 <body>
 
 <!-- ══ TOPBAR ══════════════════════════════════════════════════════ -->
 <header class="topbar">
+  <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
   <div class="logo">
     <svg class="logo-svg" viewBox="0 0 220 28" fill="none">
       <g transform="translate(0,2)">
@@ -241,9 +276,9 @@ a.ext-link:hover{text-decoration:underline}
         <circle cx="22" cy="-.5" r="1.5" fill="var(--accent2)"/>
         <path d="M31 16 Q37 14 42 17 Q46 19 50 16" stroke="var(--accent2)" stroke-width=".8" opacity=".3"/>
       </g>
-      <text x="44" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="13" font-weight="700" fill="var(--text)">Show</text>
-      <text x="82" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="9" font-weight="500" fill="var(--muted)">to</text>
-      <text x="100" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="13" font-weight="700" fill="var(--accent)">Ship</text>
+      <text x="44" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="14" font-weight="700" fill="var(--text)">Show</text>
+      <text x="84" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="10" font-weight="500" fill="var(--muted)">to</text>
+      <text x="103" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="14" font-weight="700" fill="var(--accent)">Ship</text>
     </svg>
   </div>
   <div style="height:20px;width:1px;background:var(--border);margin:0 4px"></div>
@@ -296,6 +331,11 @@ a.ext-link:hover{text-decoration:underline}
       Opportunities
     </a>
   </div>
+  <div class="nav-section" style="margin-top:16px">
+    <div style="padding:0 16px">
+      <button class="btn-sm" onclick="toggleSidebar()" style="width:100%;font-size:12px">✕ Close</button>
+    </div>
+  </div>
   <div class="nav-section">
     <div class="nav-label">Tools</div>
     <a class="nav-item" onclick="showPage('linkedin')" data-page="linkedin">
@@ -312,6 +352,8 @@ a.ext-link:hover{text-decoration:underline}
     </a>
   </div>
 </nav>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 <!-- ══ MAIN CONTENT ════════════════════════════════════════════════ -->
 <main class="main">
@@ -1300,6 +1342,12 @@ function initTheme() {
   const saved = localStorage.getItem('theme') || '';
   document.documentElement.setAttribute('data-theme', saved);
   document.getElementById('theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
+}
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+  document.getElementById('hamburger').classList.toggle('open');
 }
 let sortField = '';
 let sortDir = '';

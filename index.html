@@ -424,8 +424,11 @@ a.ext-link:hover{text-decoration:underline}
           <option value="100">100</option>
           <option value="200">200</option>
         </select>
+        <button id="first-page" class="action-btn" onclick="goToPage(1)" disabled>⏮</button>
         <button id="prev-page" class="action-btn" onclick="changePage(-1)" disabled>←</button>
+        <input id="page-input" type="number" min="1" style="width:50px;text-align:center;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--surface);color:var(--text);-moz-appearance:textfield" onchange="goToPage(this.value)">
         <button id="next-page" class="action-btn" onclick="changePage(1)" disabled>→</button>
+        <button id="last-page" class="action-btn" onclick="goToPage(-1)" disabled>⏭</button>
       </div>
     </div>
   </div>
@@ -838,6 +841,11 @@ function changePage(delta) {
   filterLeadsTable();
 }
 
+function goToPage(n) {
+  pageNum = n === -1 ? Infinity : Math.max(1, parseInt(n) || 1);
+  filterLeadsTable();
+}
+
 function filterLeads(status) {
   currentFilter = status;
   showPage('leads');
@@ -885,8 +893,12 @@ function filterLeadsTable(resetPage) {
     `${total} leads · Page ${pageNum} of ${pages}`;
   document.getElementById('page-info').textContent =
     `${start+1}–${Math.min(start+pageSize, total)} of ${total}`;
+  document.getElementById('page-input').value = pageNum;
+  document.getElementById('page-input').max = pages;
+  document.getElementById('first-page').disabled = pageNum <= 1;
   document.getElementById('prev-page').disabled = pageNum <= 1;
   document.getElementById('next-page').disabled = pageNum >= pages;
+  document.getElementById('last-page').disabled = pageNum >= pages;
 }
 
 function renderLeadsTable(leads) {

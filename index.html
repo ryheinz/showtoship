@@ -568,10 +568,9 @@ a.ext-link:hover{text-decoration:underline}
     <div class="modal-body">
       <div style="display:flex;flex-direction:column;gap:14px">
         <div class="field">
-          <label>Select Tradeshow</label>
-          <select id="scrape-show-select">
-            <option value="">— choose or type below —</option>
-          </select>
+          <label>Show Name</label>
+          <input type="text" id="scrape-show-name" list="show-datalist" placeholder="Enter show name (or pick from existing)">
+          <datalist id="show-datalist"></datalist>
         </div>
         <div class="field">
           <label>Exhibitor List URLs <small style="font-weight:400;text-transform:none;color:var(--dim)">one per line</small></label>
@@ -749,13 +748,13 @@ async function loadShowsData() {
     o.value = s.name; o.textContent = s.name;
     sel.appendChild(o);
   });
-  // Populate scrape modal dropdown
-  const scrSel = document.getElementById('scrape-show-select');
-  scrSel.innerHTML = '<option value="">— choose —</option>';
+  // Populate scrape modal datalist
+  const datalist = document.getElementById('show-datalist');
+  datalist.innerHTML = '';
   allShows.forEach(s => {
     const o = document.createElement('option');
-    o.value = s.name; o.textContent = s.name;
-    scrSel.appendChild(o);
+    o.value = s.name;
+    datalist.appendChild(o);
   });
   return allShows;
 }
@@ -1047,7 +1046,7 @@ async function deleteShow(id, name) {
 }
 
 function scrapeShow(name) {
-  document.getElementById('scrape-show-select').value = name;
+  document.getElementById('scrape-show-name').value = name;
   openScrapeModal();
 }
 
@@ -1058,8 +1057,8 @@ async function triggerScrape() {
   const c = cfg();
   if (!c.pat || !c.repo) { alert('Configure GitHub connection in Settings first.'); return; }
 
-  const showName = document.getElementById('scrape-show-select').value ||
-                   document.getElementById('scrape-show-select').options[document.getElementById('scrape-show-select').selectedIndex]?.text || 'Unknown Show';
+  const showName = document.getElementById('scrape-show-name').value.trim();
+  if (!showName) { alert('Enter a show name.'); return; }
   const urls     = document.getElementById('scrape-urls').value.trim();
   if (!urls) { alert('Enter at least one URL.'); return; }
 

@@ -739,8 +739,17 @@ async function loadAllData() {
 }
 
 async function loadLeadsData() {
-  const data = await sbFetch('leads?select=*&order=created_at.desc&limit=100000');
-  allLeads = data || [];
+  const pageSize = 1000;
+  let all = [];
+  let offset = 0;
+  while (true) {
+    const data = await sbFetch(`leads?select=*&order=created_at.desc&limit=${pageSize}&offset=${offset}`);
+    if (!data || !data.length) break;
+    all = all.concat(data);
+    if (data.length < pageSize) break;
+    offset += pageSize;
+  }
+  allLeads = all;
   document.getElementById('leads-count').textContent = allLeads.length;
   return allLeads;
 }

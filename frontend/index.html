@@ -786,7 +786,7 @@ function loadDashboard() {
     stbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:32px">No shows added</td></tr>';
   } else {
     stbody.innerHTML = allShows.slice(0, 6).map(s => {
-      const leads = allLeads.filter(l => l.tradeshow_name === s.name).length;
+      const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
       return `<tr><td><div class="company-name">${esc(s.name)}</div></td>
         <td style="font-size:12px;color:var(--muted)">${s.date_start || '—'}</td>
         <td style="text-align:center">${leads}</td></tr>`;
@@ -838,7 +838,7 @@ function getFilteredLeads() {
   const assigned = document.getElementById('filter-assigned').value;
   let result = allLeads.filter(l => {
     if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
-    if (show   && l.tradeshow_name !== show) return false;
+    if (show   && l.tradeshow_name?.toLowerCase() !== show.toLowerCase()) return false;
     if (status && l.status !== status) return false;
     if (assigned && l.assigned_to !== assigned) return false;
     return true;
@@ -999,7 +999,7 @@ function loadShows() {
     return;
   }
   tbody.innerHTML = allShows.map(s => {
-    const leads = allLeads.filter(l => l.tradeshow_name === s.name).length;
+    const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
     return `<tr>
       <td><div class="company-name">${esc(s.name)}</div></td>
       <td style="font-size:13px;color:var(--muted)">${esc(s.location||'—')}</td>

@@ -224,11 +224,19 @@ class ExhibitorScraper:
         then falls back to crawl4ai + LLM extraction.
         """
         domain_config = get_config_for_domain(url)
-        if domain_config and domain_config.get("type") == "api":
-            rows = await self._scrape_via_api(url, domain_config["api_config"])
-            if rows:
-                print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
-                return rows
+        if domain_config:
+            if domain_config.get("type") == "api":
+                rows = await self._scrape_via_api(url, domain_config["api_config"])
+                if rows:
+                    print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
+                    return rows
+            elif domain_config.get("type") == "playwright":
+                from site_configs import get_playwright_scraper
+                scraper_fn = get_playwright_scraper(domain_config.get("playwright_scraper"))
+                if scraper_fn:
+                    rows = await scraper_fn(url)
+                    if rows:
+                        return rows
 
         rows = []
         async with AsyncWebCrawler(config=self._browser_cfg()) as crawler:

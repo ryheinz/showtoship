@@ -1724,9 +1724,6 @@ async function loadAdminUsers() {
   const list = document.getElementById('admin-user-list');
   list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">Loading…</p>';
   try {
-    const url = localStorage.getItem('ls_admin_fn') || '/api/admin-users';
-    // Try edge function first, fall back to local API
-    const c = cfg();
     const fnUrl = localStorage.getItem('ls_admin_fn');
     if (!fnUrl) {
       list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">Set your Edge Function URL in Settings to enable user management</p>';
@@ -1735,7 +1732,11 @@ async function loadAdminUsers() {
     const res = await fetch(fnUrl + '/users', {
       headers: { Authorization: 'Bearer ' + getAuthToken() },
     });
-    if (!res.ok) { list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--red)">Error loading users</p>'; return; }
+    if (!res.ok) {
+      const errBody = await res.text().catch(()=>'');
+      list.innerHTML = `<p style="padding:24px;text-align:center;color:var(--red)">Error (${res.status}): ${esc(errBody.slice(0,200))}</p>`;
+      return;
+    }
     const data = await res.json();
     if (!data.users || !data.users.length) {
       list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--dim)">No users found</p>';

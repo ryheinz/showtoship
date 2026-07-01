@@ -474,6 +474,7 @@ a.ext-link:hover{text-decoration:underline}
         <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkReassignShow()" id="bulk-show-btn" disabled>Reassign Show</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="findDuplicates()">Duplicates</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
@@ -1711,6 +1712,7 @@ function updateBulkButtons() {
   document.getElementById('selected-count').textContent = count ? `${count} selected` : '';
   document.getElementById('bulk-status-btn').disabled = count === 0;
   document.getElementById('bulk-assign-btn').disabled = count === 0;
+  document.getElementById('bulk-show-btn').disabled = count === 0;
   document.getElementById('bulk-export-btn').disabled = count === 0;
 }
 
@@ -1760,6 +1762,26 @@ async function bulkAssign() {
     await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ assigned_to: s, updated_by: cfg().name }) });
     const lead = allLeads.find(l => l.id === id);
     if (lead) lead.assigned_to = s;
+  }
+  selected.clear();
+  updateBulkButtons();
+  filterLeadsTable();
+}
+
+async function bulkReassignShow() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  const shows = allShows.map(s => s.name).join(', ');
+  const s = prompt(`Reassign ${ids.length} lead(s) to which tradeshow?\nCurrent shows: ${shows}`);
+  if (!s) return;
+  // Find or infer the tradeshow_id
+  const match = allShows.find(sh => sh.name.toLowerCase() === s.trim().toLowerCase());
+  const update = { tradeshow_name: s.trim(), updated_by: cfg().name };
+  if (match) update.tradeshow_id = match.id;
+  for (const id of ids) {
+    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(update) });
+    const lead = allLeads.find(l => l.id === id);
+    if (lead) { lead.tradeshow_name = s.trim(); if (match) lead.tradeshow_id = match.id; }
   }
   selected.clear();
   updateBulkButtons();

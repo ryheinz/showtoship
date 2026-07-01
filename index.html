@@ -380,6 +380,13 @@ a.ext-link:hover{text-decoration:underline}
       Settings
     </a>
   </div>
+  <div class="nav-section">
+    <div class="nav-label">Help</div>
+    <a class="nav-item" onclick="showPage('docs')" data-page="docs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Guides
+    </a>
+  </div>
 </nav>
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -664,6 +671,103 @@ a.ext-link:hover{text-decoration:underline}
             <button class="btn-sm" onclick="addTeamMember()">Add</button>
           </div>
           <div id="team-list" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-docs">
+    <div class="page-header">
+      <div><h1>Guides</h1><p>How to use the ShowToShip system</p></div>
+    </div>
+    <div style="max-width:900px;display:flex;flex-direction:column;gap:20px">
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📋 Getting Leads Into the System</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p><strong>Option A — Scraper (recommended for supported sites):</strong></p>
+          <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Go to <strong>Tradeshows</strong> and click the <strong>Scrape</strong> button next to a show, or click <strong>+ New Scrape Job</strong> on the All Leads page.</li>
+            <li>Type the show name (it auto-creates a new show if one doesn't exist).</li>
+            <li>Paste the exhibitor list URL(s) — one per line. Supported domains: mapyourshow.com, a2zinc.net (and custom A2Z domains).</li>
+            <li>Toggle <strong>LLM Extraction</strong> on for unsupported sites (uses AI to parse the page). Keep it off for supported sites.</li>
+            <li>Toggle <strong>Deep Scrape</strong> if you want to follow each exhibitor's detail page for more data.</li>
+            <li>Toggle <strong>Find Emails</strong> to hunt for email addresses on company websites (slow on large lists).</li>
+            <li>Click <strong>Run Scraper</strong> — results appear in the table automatically.</li>
+          </ol>
+          <p><strong>Option B — Manual CSV Import:</strong></p>
+          <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Click <strong>Import CSV</strong> in the All Leads toolbar.</li>
+            <li>Select a CSV file with columns like company name, contact, email, phone, website, etc.</li>
+            <li>Map the detected columns to the right fields in the modal, then confirm.</li>
+          </ol>
+          <p><strong>Option C — LinkedIn Extension:</strong></p>
+          <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Install the Chrome extension from the <strong>LinkedIn Tools</strong> page.</li>
+            <li>Open a LinkedIn profile or search results page, click the extension icon.</li>
+            <li>The extension extracts the person's name, title, company, and LinkedIn URL.</li>
+            <li>Configure your Supabase URL and API key in the extension popup, then click Save to ShowToShip.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📊 Managing Leads</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Filter by Show:</strong> Click a show name on the Dashboard (upcoming shows) or Tradeshows page to jump to all leads for that show.</li>
+            <li><strong>Pipeline Stages:</strong> Use the left sidebar pipeline filters (New → Contacted → Qualified → Opportunity) to track progress.</li>
+            <li><strong>Assign:</strong> Click a lead to open the detail panel, then pick a team member from the Assign dropdown.</li>
+            <li><strong>Bulk Actions:</strong> Select multiple leads with checkboxes, then use <strong>Bulk Assign</strong> or <strong>Bulk Delete</strong>.</li>
+            <li><strong>Letter Bar:</strong> Click a letter to filter leads alphabetically by company name.</li>
+            <li><strong>Duplicate Finder:</strong> Click <strong>Find Duplicates</strong> to highlight leads with the same company name so you can merge or delete them.</li>
+            <li><strong>Export:</strong> Click <strong>Export Excel</strong> in the sidebar to download all filtered leads as an .xlsx file.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🧹 Clearing Data</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Clear leads per show:</strong> On the Tradeshows page, click <strong>Clear Leads</strong> next to a show to remove all leads from that show only.</li>
+            <li><strong>Delete individual leads:</strong> Open a lead's detail panel and click <strong>Delete</strong> at the bottom.</li>
+            <li><strong>Bulk delete:</strong> Select leads with checkboxes, click <strong>Bulk Delete</strong>, then confirm.</li>
+          </ul>
+          <p style="color:var(--muted)">⚠ Deletions are permanent and cannot be undone.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🔧 Configuration</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>Go to <strong>Settings</strong> in the sidebar to configure:</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>GitHub Connection:</strong> Personal Access Token + repo name — used if you want to commit scrape results.</li>
+            <li><strong>Supabase Database:</strong> Project URL and Anon Key — connects the app to your Supabase backend.</li>
+            <li><strong>Admin Function URL:</strong> Edge Function for user management (admin only).</li>
+            <li><strong>Team Members:</strong> Add names so you can assign leads to specific people.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🤖 Running Scrapers via GitHub Actions</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>For large or automated scrapes, use the GitHub Actions workflow:</p>
+          <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Go to the repo's <strong>Actions</strong> tab → <strong>Scrape Exhibitors</strong> workflow.</li>
+            <li>Click <strong>Run workflow</strong> and fill in the show name and URL(s).</li>
+            <li>The workflow runs the Playwright scraper in the cloud and saves results directly to Supabase.</li>
+            <li>The <strong>SUPABASE_KEY</strong> secret must be set to the service_role key (not anon) for INSERT permission.</li>
+          </ol>
+          <p><strong>Supported sites:</strong> MapYourShow, A2Z Events (including custom domains), SMM (API), EuroNaval.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">❓ Need Help?</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>Contact the project maintainer or open an issue on GitHub for bugs and feature requests.</p>
         </div>
       </div>
     </div>

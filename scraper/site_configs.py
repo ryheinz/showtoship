@@ -54,6 +54,11 @@ CONFIGS: dict[str, dict] = {
         "type": "playwright",
         "playwright_scraper": "scrape_mapyourshow",
     },
+    "a2zinc.net": {
+        "name": "A2Z Events",
+        "type": "playwright",
+        "playwright_scraper": "scrape_a2z",
+    },
 }
 
 
@@ -61,6 +66,9 @@ def get_config_for_domain(url: str) -> dict | None:
     for domain, config in CONFIGS.items():
         if domain in url:
             return config
+    lower = url.lower()
+    if "/public/exhibitors.aspx" in lower or "/public/eventmap.aspx" in lower:
+        return CONFIGS.get("a2zinc.net")
     return None
 
 
@@ -68,6 +76,7 @@ def get_playwright_scraper(name: str):
     scrapers = {
         "scrape_euronaval": _scrape_euronaval,
         "scrape_mapyourshow": _scrape_mapyourshow,
+        "scrape_a2z": _scrape_a2z,
     }
     return scrapers.get(name)
 
@@ -249,4 +258,121 @@ async def _scrape_mapyourshow(url: str) -> list[dict]:
         })
 
     print(f"  ✓ MapYourShow: {len(deduped)} exhibitors extracted")
+    return deduped
+
+
+async def _scrape_a2z(url: str) -> list[dict]:
+    """
+    Playwright scraper for A2Z Events (a2zinc.net) exhibitor pages.
+    Works with:
+      - /Public/Exhibitors.aspx (table-based list)
+      - /Public/EventMap.aspx (floorplan view)
+
+    Handles ASP.NET pagination (postback).
+    """
+    from playwright.async_api import async_playwright
+
+    results = []
+    page_num = 0
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(
+            headless=True,
+            args=["--disable-gpu", "--no-sandbox", "--disable-blink-features=AutomationControlled"],
+        )
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = await context.new_page()
+
+        print(f"  → Loading {url}")
+        await page.goto(url, wait_until="networkidle", timeout=60000)
+        await page.wait_for_timeout(2000)
+
+        while True:
+            page_num += 1
+            entries = await page.evaluate("""
+                () => {
+                    const table = document.querySelector('table.table-striped.table-hover');
+                    if (!table) return [];
+                    const results = [];
+                    const rows = table.querySelectorAll('tr');
+                    for (let i = 0; i < rows.length; i++) {
+                        const cells = rows[i].querySelectorAll('td');
+                        if (cells.length < 3) continue;
+                        const nameCell = cells[1];
+                        const boothCell = cells[2];
+                        const nameLink = nameCell?.querySelector('a.exhibitorName');
+                        if (!nameLink) continue;
+                        const name = nameLink.textContent.trim();
+                        if (!name) continue;
+                        const boothLink = boothCell?.querySelector('a.boothLabel');
+                        results.push({
+                            company_name: name,
+                            booth_number: boothLink?.textContent?.trim() || '',
+                            detail_url: nameLink.href || '',
+                            map_url: boothLink?.href || '',
+                        });
+                    }
+                    return results;
+                }
+            """)
+            print(f"  → Page {page_num}: {len(entries)} exhibitors")
+            results.extend(entries)
+
+            has_next = await page.evaluate("""
+                () => {
+                    const pager = document.querySelector('.pagination, [class*="pager"], table.DG');
+                    if (!pager) return false;
+                    const links = pager.querySelectorAll('a');
+                    for (const a of links) {
+                        const text = a.textContent.trim().toLowerCase();
+                        if (text === 'next' || text === '>' || text === '\\u00bb') {
+                            if (!a.parentElement?.classList.contains('disabled') && !a.classList.contains('aspNetDisabled')) return true;
+                        }
+                    }
+                    return false;
+                }
+            """)
+
+            if not has_next:
+                break
+
+            clicked = await page.evaluate("""
+                () => {
+                    const pager = document.querySelector('.pagination, [class*="pager"], table.DG');
+                    if (!pager) return false;
+                    const links = pager.querySelectorAll('a');
+                    for (const a of links) {
+                        const text = a.textContent.trim().toLowerCase();
+                        if (text === 'next' || text === '>' || text === '\\u00bb') {
+                            if (!a.parentElement?.classList.contains('disabled') && !a.classList.contains('aspNetDisabled')) {
+                                a.click();
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+            """)
+
+            if not clicked:
+                print(f"  ✗ Could not click next page")
+                break
+
+            await page.wait_for_timeout(4000)
+
+        await browser.close()
+
+    seen = set()
+    deduped = []
+    for r in results:
+        key = r.get("company_name", "").strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            r["source_url"] = url
+            r["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            deduped.append(r)
+
+    print(f"  ✓ A2Z Events: {len(deduped)} exhibitors extracted")
     return deduped

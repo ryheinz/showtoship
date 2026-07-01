@@ -436,6 +436,7 @@ a.ext-link:hover{text-decoration:underline}
       <div><h1>All Leads</h1><p id="leads-subtitle">Loading…</p></div>
       <div class="header-actions">
         <button class="btn-outline" onclick="exportLeads()">Export CSV</button>
+        <button class="btn-outline" onclick="openImportModal()">Import CSV</button>
         <button class="btn-sm" onclick="openScrapeModal()">+ Scrape</button>
       </div>
     </div>
@@ -721,6 +722,39 @@ a.ext-link:hover{text-decoration:underline}
   </div>
 </div>
 
+<!-- Import CSV modal -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Import CSV</h3>
+      <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1">
+          <label>CSV File</label>
+          <div style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer" onclick="document.getElementById('import-csv-file').click()">
+            <div style="font-size:24px;margin-bottom:6px">📄</div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px" id="import-file-name">Click to select CSV file</div>
+            <div style="font-size:11px;color:var(--dim)">Columns with matching names will be auto-mapped</div>
+          </div>
+          <input type="file" id="import-csv-file" accept=".csv" style="display:none" onchange="handleImportFile(this)">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Tradeshow (optional)</label>
+          <select id="import-tradeshow"><option value="">— None —</option></select>
+        </div>
+      </div>
+      <div id="import-preview" style="margin-top:12px;max-height:300px;overflow:auto;font-size:12px"></div>
+      <div id="import-status" style="margin-top:8px;font-size:13px"></div>
+      <div class="form-actions">
+        <button class="btn-outline" onclick="closeModal('import-modal')">Cancel</button>
+        <button class="btn-sm" id="import-run-btn" onclick="runImport()" disabled>Preview & Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add show modal -->
 <div class="modal-overlay" id="show-modal">
   <div class="modal">
@@ -947,6 +981,16 @@ async function loadShowsData() {
     o.value = s.name;
     datalist.appendChild(o);
   });
+  // Populate import modal tradeshow dropdown
+  const isel = document.getElementById('import-tradeshow');
+  if (isel) {
+    isel.innerHTML = '<option value="">— None —</option>';
+    allShows.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.name; o.textContent = s.name;
+      isel.appendChild(o);
+    });
+  }
   return allShows;
 }
 
@@ -1458,6 +1502,100 @@ function removeTeamMember(name) {
   const team = cfg().team.filter(m => m !== name);
   localStorage.setItem(LS.team, JSON.stringify(team));
   renderTeamList();
+}
+
+// ── Import CSV ──────────────────────────────────────────────────────────
+function openImportModal() {
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-status').textContent = '';
+  document.getElementById('import-run-btn').disabled = true;
+  document.getElementById('import-csv-file').value = '';
+  document.getElementById('import-file-name').textContent = 'Click to select CSV file';
+  openModal('import-modal');
+}
+
+let importRows = [];
+function handleImportFile(input) {
+  const file = input.files[0];
+  if (!file) { document.getElementById('import-file-name').textContent = 'Click to select CSV file'; return; }
+  document.getElementById('import-file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result;
+    const lines = text.split('\n');
+    if (lines.length < 2) { document.getElementById('import-status').textContent = 'CSV must have a header row'; return; }
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').replace(/\s+/g,' '));
+    importRows = lines.slice(1).filter(l => l.trim()).map(line => {
+      const vals = line.split(',');
+      const obj = {};
+      headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+      return obj;
+    });
+    const mapping = {
+      'company': 'company_name', 'company_name': 'company_name', 'organization': 'company_name',
+      'first name': 'first_name', 'first': 'first_name',
+      'last name': 'last_name', 'last': 'last_name',
+      'contact': 'contact_name', 'name': 'contact_name', 'full name': 'contact_name',
+      'email': 'email', 'email address': 'email', 'email_address': 'email',
+      'phone': 'phone', 'telephone': 'phone',
+      'linkedin': 'linkedin_url', 'linkedin url': 'linkedin_url', 'linkedin_url': 'linkedin_url', 'linkedin profile': 'linkedin_url',
+      'website': 'website', 'company website': 'website', 'company_website': 'website',
+      'industry': 'industry',
+      'country': 'country',
+      'city': 'city', 'location': 'city',
+      'title': 'title', 'job title': 'title', 'job_title': 'title',
+      'notes': 'notes', 'source': 'source_url', 'source_url': 'source_url',
+    };
+    let preview = `<div style="font-weight:600;margin-bottom:6px">${importRows.length} rows · ${headers.length} columns</div><table style="width:100%;font-size:11px;border-collapse:collapse"><thead><tr style="background:var(--surface2)">`;
+    headers.forEach(h => {
+      const mapped = mapping[h.toLowerCase()] || '<span style="color:var(--red)">skip</span>';
+      preview += `<th style="padding:4px 6px;text-align:left;border:1px solid var(--border);white-space:nowrap">${h}<br><span style="font-weight:400">→ ${mapped}</span></th>`;
+    });
+    preview += '</tr></thead><tbody>';
+    importRows.slice(0, 5).forEach(row => {
+      preview += '<tr>' + headers.map(h => `<td style="padding:4px 6px;border:1px solid var(--border);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[h]||''}</td>`).join('') + '</tr>';
+    });
+    if (importRows.length > 5) preview += `<tr><td colspan="${headers.length}" style="padding:4px 6px;text-align:center;color:var(--dim)">… and ${importRows.length - 5} more rows</td></tr>`;
+    preview += '</tbody></table>';
+    document.getElementById('import-preview').innerHTML = preview;
+    document.getElementById('import-status').textContent = 'Preview ready — click Import to save';
+    document.getElementById('import-status').style.color = '';
+    document.getElementById('import-run-btn').disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+async function runImport() {
+  const btn = document.getElementById('import-run-btn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const tradeshowName = document.getElementById('import-tradeshow').value;
+  const status = document.getElementById('import-status');
+  let saved = 0; let errors = 0;
+  for (const row of importRows) {
+    const lead = {
+      company_name:   row.company_name || row.Company || row.company || row.Organization || '',
+      contact_name:   row.contact_name || row.Contact || row.name || row.Name || ((row.first_name||row.First||'') + ' ' + (row.last_name||row.Last||'')).trim() || '',
+      email:          row.email || row.Email || row['Email Address'] || '',
+      phone:          row.phone || row.Phone || '',
+      linkedin_url:   row.linkedin_url || row.LinkedIn || row['LinkedIn URL'] || row['LinkedIn Profile'] || '',
+      website:        row.website || row.Website || '',
+      industry:       row.industry || row.Industry || '',
+      country:        row.country || row.Country || '',
+      city:           row.city || row.City || row.location || row.Location || '',
+      notes:          row.notes || row.Notes || row.title || row.Title || '',
+      source_url:     row.source_url || row.Source || 'csv_import',
+      status:         'new',
+      tradeshow_name: tradeshowName || null,
+    };
+    if (!lead.company_name && !lead.contact_name && !lead.email) { errors++; continue; }
+    const result = await sbFetch('leads', { method: 'POST', body: JSON.stringify(lead) });
+    if (result) saved++; else errors++;
+  }
+  status.style.color = saved ? 'var(--green)' : 'var(--red)';
+  status.textContent = `✓ Imported ${saved} leads` + (errors ? `, ${errors} skipped` : '');
+  btn.textContent = 'Done';
+  await loadAllData();
+  loadLeads();
 }
 
 // ── LinkedIn CSV upload ───────────────────────────────────────────────────

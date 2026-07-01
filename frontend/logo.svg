@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-  <path d="M6 30 L10 18 L15 14 L25 14 L30 18 L34 30 Z" fill="#5B8DEF"/>
-  <rect x="13" y="9" width="14" height="6" rx="1.5" fill="#5B8DEF" opacity="0.7"/>
-  <rect x="15" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14"/>
-  <rect x="19" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14"/>
-  <rect x="23" y="11" width="2.5" height="3" rx="0.5" fill="#0E0F14" opacity="0.5"/>
-  <line x1="27" y1="5" x2="27" y2="9" stroke="#4ECDC4" stroke-width="1.5"/>
-  <circle cx="27" cy="4" r="2" fill="#4ECDC4"/>
-  <path d="M34 28 Q40 26 46 30" stroke="#4ECDC4" stroke-width="1" opacity="0.4"/>
+  <path d="M6 30 L10 18 L15 14 L25 14 L30 18 L34 30 Z" fill="#0076BF"/>
+  <rect x="13" y="9" width="14" height="6" rx="1.5" fill="#0076BF" opacity="0.7"/>
+  <rect x="15" y="11" width="2.5" height="3" rx="0.5" fill="#0B0E13"/>
+  <rect x="19" y="11" width="2.5" height="3" rx="0.5" fill="#0B0E13"/>
+  <rect x="23" y="11" width="2.5" height="3" rx="0.5" fill="#0B0E13" opacity="0.5"/>
+  <line x1="27" y1="5" x2="27" y2="9" stroke="#4C3494" stroke-width="1.5"/>
+  <circle cx="27" cy="4" r="2" fill="#4C3494"/>
+  <path d="M34 28 Q40 26 46 30" stroke="#4C3494" stroke-width="1" opacity="0.4"/>
 </svg>

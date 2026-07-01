@@ -469,6 +469,7 @@ a.ext-link:hover{text-decoration:underline}
         <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="findDuplicates()">Duplicates</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
       <table>
@@ -1048,6 +1049,46 @@ function getFilteredLeads() {
   return result;
 }
 
+function findDuplicates() {
+  const groups = [];
+  const byEmail = {};
+  const byLinkedIn = {};
+  for (const l of allLeads) {
+    if (l.email) {
+      const key = l.email.toLowerCase();
+      (byEmail[key] = byEmail[key] || []).push(l);
+    }
+    if (l.linkedin_url) {
+      const key = l.linkedin_url.replace(/\/$/,'').toLowerCase();
+      (byLinkedIn[key] = byLinkedIn[key] || []).push(l);
+    }
+  }
+  for (const g of Object.values(byEmail)) if (g.length > 1) groups.push({ reason: 'Same email', leads: g });
+  for (const g of Object.values(byLinkedIn)) if (g.length > 1) groups.push({ reason: 'Same LinkedIn URL', leads: g });
+
+  if (!groups.length) { alert('No duplicates found'); return; }
+
+  let html = groups.map(g => `
+    <div style="margin-bottom:16px">
+      <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--muted)">${esc(g.reason)}</div>
+      ${g.leads.map(l => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+        <span style="flex:1">${esc(l.company_name||'—')} — ${esc(l.contact_name||'')} ${l.email ? '· '+esc(l.email) : ''} ${l.tradeshow_name ? '('+esc(l.tradeshow_name)+')' : ''}</span>
+        <button class="action-btn" onclick="openLeadPanel('${l.id}')">Edit</button>
+      </div>`).join('')}
+    </div>
+  `).join('');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `<div class="modal" style="max-width:600px">
+    <div class="modal-head"><h3>Duplicates (${groups.length} group${groups.length>1?'s':''})</h3></div>
+    <div style="padding:0 24px 24px;max-height:60vh;overflow-y:auto;font-size:13px">${html}</div>
+    <div style="padding:0 24px 16px;display:flex;justify-content:flex-end"><button class="btn-sm" onclick="this.closest('.modal-overlay').remove()">Close</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
 function filterLeadsTable(resetPage) {
   if (resetPage) pageNum = 1;
   selected.clear();
@@ -1166,6 +1207,9 @@ function openLeadPanel(id) {
         </div>
       </div>
     </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn-outline" style="color:#e74c3c;border-color:#e74c3c" onclick="deleteLead('${lead.id}')">Delete Lead</button>
+    </div>
   `;
   document.getElementById('lead-panel').classList.add('open');
 }
@@ -1184,6 +1228,14 @@ async function updateLead(id, field, value) {
   const lead = allLeads.find(l => l.id === id);
   if (lead) lead[field] = value;
   if (field === 'status' || field === 'assigned_to') filterLeadsTable();
+}
+
+async function deleteLead(id) {
+  if (!confirm('Delete this lead permanently?')) return;
+  await sbFetch(`leads?id=eq.${id}`, { method: 'DELETE' });
+  allLeads = allLeads.filter(l => l.id !== id);
+  closePanel();
+  filterLeadsTable();
 }
 
 function infoRow(label, value) {

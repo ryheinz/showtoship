@@ -689,12 +689,9 @@ a.ext-link:hover{text-decoration:underline}
       <div style="display:flex;flex-direction:column;gap:14px">
         <div class="field">
           <label>Show Name <span style="color:var(--red)">*</span></label>
-          <div style="display:flex;gap:6px">
-            <select id="scrape-show-name" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;cursor:pointer">
-              <option value="">— Select a tradeshow —</option>
-            </select>
-            <button class="btn-outline" onclick="openModal('show-modal')" title="Add new tradeshow" style="padding:7px 12px;font-size:18px;line-height:1">+</button>
-          </div>
+          <input type="text" id="scrape-show-name" list="show-datalist" placeholder="Type a show name (new or existing)" oninput="checkShowExists(this.value)">
+          <datalist id="show-datalist"></datalist>
+          <div id="show-name-hint" style="font-size:12px;margin-top:4px"></div>
         </div>
         <div class="field">
           <label>Exhibitor List URLs <small style="font-weight:400;text-transform:none;color:var(--dim)">one per line</small></label>
@@ -976,14 +973,14 @@ async function loadShowsData() {
     o.value = s.name; o.textContent = s.name;
     sel.appendChild(o);
   });
-  // Populate scrape modal show dropdown
-  const ssel = document.getElementById('scrape-show-name');
-  if (ssel) {
-    ssel.innerHTML = '<option value="">— Select a tradeshow —</option>';
+  // Populate scrape modal datalist
+  const datalist = document.getElementById('show-datalist');
+  if (datalist) {
+    datalist.innerHTML = '';
     allShows.forEach(s => {
       const o = document.createElement('option');
-      o.value = s.name; o.textContent = s.name;
-      ssel.appendChild(o);
+      o.value = s.name;
+      datalist.appendChild(o);
     });
   }
   // Populate import modal tradeshow dropdown
@@ -1376,14 +1373,25 @@ function scrapeShow(name) {
 }
 
 // ── GitHub Actions trigger ────────────────────────────────────────────────
-function openScrapeModal() { openModal('scrape-modal'); }
+function openScrapeModal() {
+  document.getElementById('show-name-hint').textContent = '';
+  openModal('scrape-modal');
+}
+
+function checkShowExists(name) {
+  const hint = document.getElementById('show-name-hint');
+  if (!name.trim()) { hint.textContent = ''; return; }
+  const exists = allShows.some(s => s.name.toLowerCase() === name.trim().toLowerCase());
+  hint.textContent = exists ? '✓ Existing show' : '✦ New show will be created';
+  hint.style.color = exists ? 'var(--green)' : 'var(--amber)';
+}
 
 async function triggerScrape() {
   const c = cfg();
   if (!c.pat || !c.repo) { alert('Configure GitHub connection in Settings first.'); return; }
 
-  const showName = document.getElementById('scrape-show-name').value;
-  if (!showName) { alert('Select a tradeshow first.'); return; }
+  const showName = document.getElementById('scrape-show-name').value.trim();
+  if (!showName) { alert('Enter a show name.'); return; }
   const urls     = document.getElementById('scrape-urls').value.trim();
   if (!urls) { alert('Enter at least one URL.'); return; }
 

@@ -473,6 +473,7 @@ a.ext-link:hover{text-decoration:underline}
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkReassignShow()" id="bulk-show-btn" disabled>Reassign Show</button>
+        <button class="btn-outline" style="font-size:12px;padding:5px 10px;color:#e74c3c;border-color:#e74c3c" onclick="bulkDelete()" id="bulk-delete-btn" disabled>Delete</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="findDuplicates()">Duplicates</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
@@ -1024,7 +1025,7 @@ function loadDashboard() {
   } else {
     stbody.innerHTML = allShows.slice(0, 6).map(s => {
       const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
-      return `<tr><td><div class="company-name">${esc(s.name)}</div></td>
+      return `<tr onclick="filterByShow('${esc(s.name)}')" style="cursor:pointer"><td><div class="company-name">${esc(s.name)}</div></td>
         <td style="font-size:12px;color:var(--muted)">${s.date_start || '—'}</td>
         <td style="text-align:center">${leads}</td></tr>`;
     }).join('');
@@ -1086,6 +1087,12 @@ function filterLeads(status) {
   document.querySelectorAll('[data-filter]').forEach(el => {
     el.classList.toggle('active', el.dataset.filter === status);
   });
+}
+
+function filterByShow(name) {
+  showPage('leads');
+  document.getElementById('filter-show').value = name;
+  filterLeadsTable(true);
 }
 
 function getFilteredLeads() {
@@ -1322,7 +1329,7 @@ function loadShows() {
   tbody.innerHTML = allShows.map(s => {
     const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
     return `<tr>
-      <td><div class="company-name">${esc(s.name)}</div></td>
+      <td><div class="company-name" style="cursor:pointer" onclick="filterByShow('${esc(s.name)}')">${esc(s.name)}</div></td>
       <td style="font-size:13px;color:var(--muted)">${esc(s.location||'—')}</td>
       <td style="font-size:13px;color:var(--muted)">${esc(s.industry||'—')}</td>
       <td style="font-size:12px;color:var(--muted)">${s.date_start||''}${s.date_end?' → '+s.date_end:''}</td>
@@ -1330,6 +1337,7 @@ function loadShows() {
       <td style="text-align:center">${s.attending ? '<span style="color:var(--green)">✓</span>' : '—'}</td>
       <td>
         <button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button>
+        <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="clearShowLeads('${esc(s.id)}','${esc(s.name)}')">Clear</button>
         <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="deleteShow('${esc(s.id)}','${esc(s.name)}')">✕</button>
       </td>
     </tr>`;
@@ -1356,6 +1364,16 @@ async function saveShow() {
   closeModal('show-modal');
   await loadShowsData();
   loadShows();
+}
+
+async function clearShowLeads(id, name) {
+  const count = allLeads.filter(l => l.tradeshow_id === id).length;
+  if (!confirm(`Delete ALL ${count} leads for "${name}"? The tradeshow will be kept.`)) return;
+  await sbFetch(`leads?tradeshow_id=eq.${id}`, { method: 'DELETE' });
+  allLeads = allLeads.filter(l => l.tradeshow_id !== id);
+  filterLeadsTable();
+  loadShows();
+  loadDashboard();
 }
 
 async function deleteShow(id, name) {
@@ -1725,6 +1743,7 @@ function updateBulkButtons() {
   document.getElementById('bulk-status-btn').disabled = count === 0;
   document.getElementById('bulk-assign-btn').disabled = count === 0;
   document.getElementById('bulk-show-btn').disabled = count === 0;
+  document.getElementById('bulk-delete-btn').disabled = count === 0;
   document.getElementById('bulk-export-btn').disabled = count === 0;
 }
 
@@ -1794,6 +1813,19 @@ async function bulkReassignShow() {
     await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(update) });
     const lead = allLeads.find(l => l.id === id);
     if (lead) { lead.tradeshow_name = s.trim(); if (match) lead.tradeshow_id = match.id; }
+  }
+  selected.clear();
+  updateBulkButtons();
+  filterLeadsTable();
+}
+
+async function bulkDelete() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} lead(s) permanently?`)) return;
+  for (const id of ids) {
+    await sbFetch(`leads?id=eq.${id}`, { method: 'DELETE' });
+    allLeads = allLeads.filter(l => l.id !== id);
   }
   selected.clear();
   updateBulkButtons();

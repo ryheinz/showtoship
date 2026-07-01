@@ -70,6 +70,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-sm:active{transform:translateY(0)}
 .btn-outline{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:7px 14px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s}
 .btn-outline:hover{border-color:var(--text);color:var(--text);background:var(--surface2)}
+.letter-bar{display:flex;gap:2px;padding:8px 0;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
+.letter-bar button{background:none;border:none;padding:2px 6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:3px;font-family:var(--font);transition:all .1s;line-height:1.6}
+.letter-bar button:hover{background:var(--surface2);color:var(--text)}
+.letter-bar button.active{background:var(--accent);color:#fff}
 
 /* ── Sidebar ── */
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto}
@@ -472,6 +476,7 @@ a.ext-link:hover{text-decoration:underline}
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="findDuplicates()">Duplicates</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
+      <div class="letter-bar" id="letter-bar"></div>
       <table>
         <thead><tr>
           <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
@@ -982,6 +987,20 @@ function loadDashboard() {
 
 // ── Leads table ───────────────────────────────────────────────────────────
 function loadLeads() {
+  // Build letter filter bar
+  const bar = document.getElementById('letter-bar');
+  bar.innerHTML = '<button class="active" data-letter="">All</button>' +
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l =>
+      `<button data-letter="${l}">${l}</button>`
+    ).join('');
+  bar.onclick = e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    bar.querySelector('.active')?.classList.remove('active');
+    btn.classList.add('active');
+    alphaFilter = btn.dataset.letter;
+    filterLeadsTable(true);
+  };
   filterLeadsTable();
   document.getElementById('leads-subtitle').textContent = `${allLeads.length} total leads`;
   // Populate assigned filter
@@ -992,6 +1011,7 @@ function loadLeads() {
 }
 
 let currentFilter = '';
+let alphaFilter = '';
 let pageSize = 50;
 let pageNum = 1;
 
@@ -1037,6 +1057,10 @@ function getFilteredLeads() {
     if (document.getElementById('filter-email').value === 'none' && l.email) return false;
     if (source === 'linkedin' && !(l.source_url||'').includes('linkedin.com')) return false;
     if (source === 'scraper' && (l.source_url||'').includes('linkedin.com')) return false;
+    if (alphaFilter) {
+      const name = (l.company_name||l.contact_name||'')
+      if (name[0]?.toUpperCase() !== alphaFilter) return false;
+    }
     return true;
   });
   if (sortField) {

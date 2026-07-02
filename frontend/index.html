@@ -922,6 +922,9 @@ a.ext-link:hover{text-decoration:underline}
 <!-- ══ JAVASCRIPT ═══════════════════════════════════════════════════ -->
 <script>
 // ── Config ────────────────────────────────────────────────────────────────
+const SB_URL = 'https://rqawqlfrgkgyfxldkmbm.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxYXdxbGZyZ2tneWZ4bGRrbWJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMjgxMTIsImV4cCI6MjA5MTYwNDExMn0.EfzQ-Woytnjz4CLrrr1ltsWiRkHGxJv9Ajk5KP0LG7E';
+
 const LS = {
   pat:   'ls_pat',   repo: 'ls_repo', name: 'ls_name',
   sbUrl: 'ls_sb_url', sbKey: 'ls_sb_key',
@@ -933,8 +936,8 @@ const cfg = () => ({
   pat:   localStorage.getItem(LS.pat)   || '',
   repo:  localStorage.getItem(LS.repo)  || '',
   name:  localStorage.getItem(LS.name)  || 'User',
-  sbUrl: localStorage.getItem(LS.sbUrl) || '',
-  sbKey: localStorage.getItem(LS.sbKey) || '',
+  sbUrl: localStorage.getItem(LS.sbUrl) || SB_URL,
+  sbKey: localStorage.getItem(LS.sbKey) || SB_KEY,
   team:  JSON.parse(localStorage.getItem(LS.team) || '[]'),
 });
 

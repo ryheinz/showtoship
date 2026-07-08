@@ -54,9 +54,26 @@ CONTACT_PATHS = [
     "/impressum",        # German legal page — almost always has email
     "/legal",
     "/team",
+    "/our-team",
+    "/management",
+    "/leadership",
+    "/executive-team",
+    "/management-team",
+    "/board",
+    "/board-of-directors",
+    "/staff",
+    "/key-personnel",
     "/company",
     "/info",
     "",                  # homepage last
+]
+
+# Roles to search for in web fallback
+CONTACT_ROLES = [
+    "CEO", "Founder", "Owner", "Director", "VP",
+    "Managing Director", "President", "Chairman",
+    "Head of Sales", "Sales Director", "Business Development",
+    "CTO", "CFO", "COO", "CMO",
 ]
 
 # Common generic email prefixes to guess
@@ -320,6 +337,43 @@ class EmailFinder:
         text = re.sub(r'\s+', ' ', text)
         return text
 
+    async def _search_contacts_by_role(self, company_name: str) -> list[dict]:
+        """Search the web for people at a company by role (CEO, Founder, etc.)."""
+        found = []
+        seen = set()
+
+        for role in CONTACT_ROLES:
+            if len(found) >= 3:
+                break
+            query = f'"{company_name}" {role}'
+            search_url = f"https://html.duckduckgo.com/html/?q={re.sub(r' ', '+', query)}"
+            text = await self._fetch_text(search_url)
+            if not text:
+                continue
+
+            # Look for names near role mentions
+            clean = self._strip_html(text)
+            lines = clean.split('\n')
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if not line or len(line) < 8:
+                    continue
+                if role.lower() not in line.lower():
+                    continue
+
+                names = self.NAME_RE.findall(line)
+                for name in names:
+                    if len(name.split()) < 2:
+                        continue
+                    key = f"{name}|{role}"
+                    if key not in seen:
+                        seen.add(key)
+                        found.append({'name': name, 'title': role, 'email': ''})
+                        if len(found) >= 3:
+                            break
+
+        return found
+
     async def _find_contacts_on_website(self, website: str, company_name: str) -> dict:
         """
         Visit company website pages and find people (name, title, email).
@@ -342,6 +396,15 @@ class EmailFinder:
                 if key not in seen_names:
                     seen_names.add(key)
                     all_contacts.append(p)
+
+        if not all_contacts and company_name:
+            # Fallback: search web by role
+            role_contacts = await self._search_contacts_by_role(company_name)
+            for c in role_contacts:
+                key = c['name'].lower()
+                if key not in seen_names:
+                    seen_names.add(key)
+                    all_contacts.append(c)
 
         if not all_contacts:
             return {}

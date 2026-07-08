@@ -2173,7 +2173,7 @@ async function callAI(messages) {
 
   if (provider === 'default') {
     headers['Authorization'] = 'Bearer ' + getAuthToken()
-    body = JSON.stringify({ message: messages[messages.length-1].content, history: messages.slice(0,-1) })
+    body = JSON.stringify({ message: messages[messages.length-1].content, history: messages.slice(0,-1), provider: 'openai' })
   } else if (provider === 'openai' || provider === 'custom') {
     const key = localStorage.getItem(AI_KEY_KEY)
     if (!key) throw new Error('API key not configured — go to Settings')

@@ -43,16 +43,24 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const { message, company_name, history } = body
+    const { message, company_name, history, provider } = body
     if (!message) {
       return new Response(JSON.stringify({ error: 'message is required' }), {
         status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       })
     }
 
+    const aiProvider = provider || 'openai'
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiKey) {
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+
+    if (aiProvider === 'openai' && !openaiKey) {
       return new Response(JSON.stringify({ error: 'AI not configured — ask your admin to add OPENAI_API_KEY secret' }), {
+        status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+    if (aiProvider === 'anthropic' && !anthropicKey) {
+      return new Response(JSON.stringify({ error: 'AI not configured — ask your admin to add ANTHROPIC_API_KEY secret' }), {
         status: 503, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       })
     }
@@ -148,29 +156,56 @@ Rules:
       { role: 'user', content: message },
     ]
 
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        temperature: 0.3,
-        max_tokens: 800,
-      }),
-    })
+    let reply = ''
 
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text()
-      return new Response(JSON.stringify({ error: `AI error: ${errText.slice(0, 200)}` }), {
-        status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    if (aiProvider === 'anthropic') {
+      const systemMsg = messages.find((m: any) => m.role === 'system')
+      const userMsgs = messages.filter((m: any) => m.role !== 'system')
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': anthropicKey!,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 800,
+          system: systemMsg?.content || '',
+          messages: userMsgs,
+        }),
       })
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text()
+        return new Response(JSON.stringify({ error: `AI error: ${errText.slice(0, 200)}` }), {
+          status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        })
+      }
+      const anthropicData = await anthropicRes.json()
+      reply = anthropicData.content?.[0]?.text || ''
+    } else {
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages,
+          temperature: 0.3,
+          max_tokens: 800,
+        }),
+      })
+      if (!openaiRes.ok) {
+        const errText = await openaiRes.text()
+        return new Response(JSON.stringify({ error: `AI error: ${errText.slice(0, 200)}` }), {
+          status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        })
+      }
+      const openaiData = await openaiRes.json()
+      reply = openaiData.choices?.[0]?.message?.content || ''
     }
-
-    const openaiData = await openaiRes.json()
-    const reply = openaiData.choices?.[0]?.message?.content || ''
 
     return new Response(JSON.stringify({ reply }), {
       status: 200,

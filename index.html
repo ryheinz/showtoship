@@ -789,6 +789,103 @@ a.ext-link:hover{text-decoration:underline}
       </div>
 
       <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🔍 Finding Contacts</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>The <strong>Find Contacts</strong> feature uses Hunter.io to discover email addresses and names for a company based on its website domain.</p>
+          <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Go to <strong>Settings → Contact Finder</strong> and paste your Hunter.io API key. Get a free key at <a href="https://hunter.io/api-keys" target="_blank" class="ext-link">hunter.io/api-keys</a> (25 requests/month).</li>
+            <li>Open any lead's detail panel — only leads with a website work.</li>
+            <li>Click <strong>Find Contacts</strong> — Hunter searches the domain and returns names, titles, and email addresses.</li>
+            <li>Review the results. Click <strong>Use</strong> next to a contact to save their name, title, and email to the lead.</li>
+            <li>The saved contact info appears in the table's Contact column and the lead's detail panel.</li>
+          </ol>
+          <p style="color:var(--muted)">💡 Filter by <strong>Has Website</strong> in the toolbar to see only leads eligible for contact discovery.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🤖 AI Assistant</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>The <strong>🚢 AI Assistant</strong> helps you research companies without leaving ShowToShip. Click the ship button in the bottom-right corner to open the chat.</p>
+          <p><strong>What you can ask:</strong></p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><em>"Tell me about Acme Corp"</em> — looks up company info from your leads database.</li>
+            <li><em>"Find contacts for a company"</em> — suggests web search results and verifies against local data.</li>
+            <li><em>"Which leads look promising?"</em> — analyzes your pipeline for high-priority opportunities.</li>
+            <li><em>"Compare these two companies"</em> — side-by-side comparison from your data.</li>
+            <li><em>"Any setting"</em> — choose the AI provider in Settings. Default uses the server key (no setup).</li>
+          </ul>
+          <p><strong>Per-lead shortcut:</strong> Open a lead's detail panel and click <strong>Ask AI about this company</strong> to pre-fill the chat with context.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🎨 Customizing Columns & Filters</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>ShowToShip gives you full control over what you see in the leads table.</p>
+          <p><strong>Show / Hide Columns:</strong></p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li>Click the <strong>Columns</strong> button in the toolbar to toggle any column on or off.</li>
+            <li>Your preferences are saved in your browser and persist across sessions.</li>
+            <li>Columns available: Company, Contact, Show, Country, Category, Products, Email, Status, Assigned, Priority.</li>
+          </ul>
+          <p><strong>Filtering leads:</strong></p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Search bar</strong> — type any text to search across all lead fields.</li>
+            <li><strong>Keyword filter</strong> — search within company name, products, description, category, and industry.</li>
+            <li><strong>Dropdown filters</strong> — narrow by Show, Status, Team Member, Email, Source, Country, Website, or Contact.</li>
+            <li><strong>Letter bar</strong> — click a letter to jump to companies starting with that letter.</li>
+            <li><strong>Column headers</strong> — click any header to sort asc/desc.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📊 Understanding the Dashboard</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>The dashboard gives you a high-level snapshot of your pipeline and activity.</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Total Leads</strong> — every lead in the system across all shows.</li>
+            <li><strong>New</strong> — leads that haven't been touched yet. Start here.</li>
+            <li><strong>Contacted</strong> — leads you've reached out to.</li>
+            <li><strong>Qualified / Opportunity</strong> — promising leads worth pursuing.</li>
+            <li><strong>Recent Leads</strong> — the last 10 leads added, with quick actions.</li>
+            <li><strong>Upcoming Shows</strong> — shows sorted by date; click any to see its leads.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🏷️ Lead Statuses & Pipeline</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>Each lead moves through stages in your sales pipeline. Change a lead's status from its detail panel.</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>New</strong> — just imported, no action taken yet.</li>
+            <li><strong>Contacted</strong> — you've reached out (email, call, LinkedIn).</li>
+            <li><strong>Qualified</strong> — they're interested and fit your criteria.</li>
+            <li><strong>Disqualified</strong> — not a fit (wrong industry, budget, etc.).</li>
+            <li><strong>Opportunity</strong> — active deal in progress.</li>
+            <li><strong>Closed</strong> — won or lost; pipeline is done.</li>
+          </ul>
+          <p><strong>Priority levels</strong> (High / Medium / Low) help you sort and focus. Use the <strong>Priority</strong> column in the table to see at a glance which leads matter most.</p>
+          <p><strong>Bulk updates:</strong> Select multiple leads with checkboxes, then click <strong>Status</strong> or <strong>Assign</strong> to update them all at once.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📤 Exporting Data</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>You can export your leads at any time.</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Export All:</strong> Click <strong>Export Excel</strong> in the left sidebar to download every lead matching your current filters as an .xlsx file.</li>
+            <li><strong>Export Selected:</strong> Check specific leads with the checkboxes, then click <strong>Export Sel.</strong> to export only those.</li>
+            <li><strong>CSV Import:</strong> Use <strong>Import CSV</strong> to bring in leads from spreadsheets or Sales Navigator exports.</li>
+          </ul>
+          <p style="color:var(--muted)">💡 The export respects your current filters — if you've filtered by show or status, only matching leads are exported.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
         <div class="table-toolbar"><span style="font-weight:600;font-size:15px">❓ Need Help?</span></div>
         <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
           <p>Contact the project maintainer or open an issue on GitHub for bugs and feature requests.</p>

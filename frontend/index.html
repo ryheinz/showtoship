@@ -1455,44 +1455,25 @@ async function askReport() {
   answerEl.innerHTML = '<div style="color:var(--dim)">Thinking…</div>'
 
   try {
-    const data = {
-      allLeads: allLeads.map(l => ({ company_name: l.company_name, status: l.status, country: l.country, tradeshow_name: l.tradeshow_name, email: l.email, contact_name: l.contact_name, industry: l.industry, category: l.category, priority: l.priority, assigned_to: l.assigned_to, source_url: l.source_url })),
-      allShows: allShows.map(s => ({ name: s.name, location: s.location, industry: s.industry, date_start: s.date_start, date_end: s.date_end })),
-      question: q,
+    const dataSummary = {
+      totalLeads: allLeads.length,
+      totalShows: allShows.length,
+      leadsByStatus: Object.fromEntries(['new','contacted','qualified','disqualified','opportunity','closed'].map(s => [s, allLeads.filter(l => l.status === s).length])),
+      leadsByShow: allShows.map(s => ({ show: s.name, total: allLeads.filter(l => l.tradeshow_name === s.name).length })),
+      topCountries: Object.entries(allLeads.reduce((a, l) => { const c = l.country||'Unknown'; a[c]=(a[c]||0)+1; return a }, {})).sort((a,b)=>b[1]-a[1]).slice(0,10),
+      withEmail: allLeads.filter(l => l.email).length,
+      withContact: allLeads.filter(l => l.contact_name).length,
     }
 
-    const provider = localStorage.getItem('ai_provider') || 'default'
-    const customUrl = localStorage.getItem('ai_custom_url') || ''
-    const apiKey = provider === 'default' ? '' : (localStorage.getItem('ai_key_' + provider) || '')
+    const systemMsg = 'You are a sales data analyst. Answer based ONLY on the data provided. Give concise, actionable answers with specific numbers.'
+    const userMsg = `Here is my sales data:\n${JSON.stringify(dataSummary, null, 2)}\n\nQuestion: ${q}`
 
-    const res = await fetch(AI_CHAT_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + getAuthToken(),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: 'You are a sales data analyst. Answer the question based ONLY on the data provided. Give concise, actionable answers with numbers. If you need more info, say so.' },
-          { role: 'user', content: `Here is my sales data:\n\nLeads: ${JSON.stringify(data.allLeads)}\n\nShows: ${JSON.stringify(data.allShows)}\n\nQuestion: ${data.question}` },
-        ],
-        provider,
-        api_key: apiKey,
-        custom_url: customUrl,
-      }),
-    })
+    const reply = await callAI([
+      { role: 'system', content: systemMsg },
+      { role: 'user', content: userMsg },
+    ])
 
-    const text = await res.text()
-    let result
-    try { result = JSON.parse(text) } catch { result = { error: text } }
-
-    if (result.error) {
-      answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(result.error)}</div>`
-      return
-    }
-
-    const content = result.choices?.[0]?.message?.content || result.content || 'No answer'
-    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + content.replace(/\n/g, '<br>') + '</div>'
+    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + reply.replace(/\n/g, '<br>') + '</div>'
   } catch (e) {
     answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(e.message)}</div>`
   }

@@ -105,6 +105,7 @@ def _clean_lead(row: dict, tradeshow_id: str, tradeshow_name: str) -> dict:
         "products":        s(row.get("products")),
         "description":     s(row.get("description")),
         "contact_name":    s(row.get("contact_person")),
+        "contact_title":   s(row.get("contact_title")),
         "email":           s(row.get("email")),
         "email_alts":      s(row.get("email_alts")),
         "email_source":    s(row.get("email_source")),
@@ -141,7 +142,7 @@ async def upsert_lead(session: aiohttp.ClientSession,
         lead_id = existing[0]["id"]
         # Only update fields that have new/better data
         updates = {}
-        for field in ["email", "phone", "contact_name", "linkedin_url",
+        for field in ["email", "phone", "contact_name", "contact_title", "linkedin_url",
                        "description", "products", "booth_number", "hall"]:
             if clean.get(field) and not existing[0].get(field):
                 updates[field] = clean[field]

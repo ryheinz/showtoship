@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS leads (
 
   -- Contact info
   contact_name    TEXT,
+  contact_title   TEXT,
   email           TEXT,
   email_alts      TEXT,
   email_source    TEXT,
@@ -161,6 +162,9 @@ CREATE POLICY "Auth access — tradeshows"     ON tradeshows     FOR ALL USING (
 CREATE POLICY "Auth access — lead_activities" ON lead_activities FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Auth access — scrape_jobs"    ON scrape_jobs    FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Auth access — user_profiles"  ON user_profiles  FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- ── Migration: add contact_title to existing database ──────────
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS contact_title TEXT;
 
 -- ── Sample tradeshow data ────────────────────────────────────
 INSERT INTO tradeshows (name, location, country, industry, date_start, date_end, attending)

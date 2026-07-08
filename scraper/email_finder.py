@@ -294,6 +294,171 @@ class EmailFinder:
 
         return guesses  # Return all guesses; caller can try SMTP or just keep top ones
 
+    # ── Contact discovery ─────────────────────────────────────────────────────
+
+    # Job title keywords to look for on team pages
+    TITLE_KEYWORDS = [
+        'ceo', 'cto', 'cfo', 'coo', 'cmo', 'cio', 'chief',
+        'founder', 'co-founder', 'cofounder',
+        'president', 'director', 'managing director', 'executive director',
+        'vice president', 'vp', 'svp', 'avp', 'evp',
+        'manager', 'senior manager', 'product manager', 'project manager',
+        'head', 'head of', 'lead', 'team lead',
+        'partner', 'managing partner', 'owner', 'principal',
+        'sales', 'marketing', 'business development',
+        'account manager', 'account executive',
+        'chairman', 'chairperson', 'board member',
+        'engineer', 'software engineer',
+        'consultant', 'senior consultant', 'advisor',
+        'operations', 'procurement',
+    ]
+
+    NAME_RE = re.compile(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b')
+
+    def _strip_html(self, text: str) -> str:
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        return text
+
+    async def _find_contacts_on_website(self, website: str, company_name: str) -> dict:
+        """
+        Visit company website pages and find people (name, title, email).
+        Returns best contact dict: {contact_person, contact_title, email} or empty dict.
+        """
+        urls_to_try = build_contact_urls(website)[:self.max_pages]
+        company_domain = domain_from_url(website)
+        all_contacts = []
+        seen_names = set()
+
+        for url in urls_to_try:
+            text = await self._fetch_text(url)
+            if not text:
+                continue
+            text = self._strip_html(text)
+
+            people = self._extract_people(text, url)
+            for p in people:
+                key = p['name'].lower()
+                if key not in seen_names:
+                    seen_names.add(key)
+                    all_contacts.append(p)
+
+        if not all_contacts:
+            return {}
+
+        # Score: prefer contacts with company-domain email, then senior titles
+        for c in all_contacts:
+            score = 0
+            if c.get('email'):
+                score += 40
+                _, ed = c['email'].split('@')
+                if ed == company_domain:
+                    score += 60
+            tl = c.get('title', '').lower()
+            if any(kw in tl for kw in ['ceo', 'founder', 'president', 'director',
+                                        'vp', 'chief', 'head', 'manager']):
+                score += 30
+            # Penalize if title is just the keyword (too vague)
+            if len(tl) < 6:
+                score -= 20
+            c['_score'] = score
+
+        all_contacts.sort(key=lambda c: c['_score'], reverse=True)
+        best = all_contacts[0]
+
+        result = {
+            'contact_person': best['name'],
+            'contact_title': best['title'],
+        }
+
+        # If best contact has a company-domain email, use it as primary
+        if best.get('email'):
+            _, ed = best['email'].split('@')
+            if ed == company_domain:
+                result['email'] = best['email']
+                result['email_source'] = 'company_website'
+                result['email_confidence'] = 'high'
+
+        return result
+
+    def _extract_people(self, text: str, page_url: str) -> list[dict]:
+        """
+        Extract people (name, title, email) from cleaned page text.
+        Returns list of {name, title, email}.
+        """
+        people = []
+        emails_with_pos = [(m.group(), m.start())
+                           for m in EMAIL_RE.finditer(text.lower())]
+
+        lines = text.split('\n')
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line or len(line) < 5:
+                continue
+
+            title_lower = line.lower()
+            matched_kw = next((kw for kw in self.TITLE_KEYWORDS
+                               if kw in title_lower), None)
+            if not matched_kw:
+                continue
+
+            name = None
+            title = line.strip()
+
+            # Pattern: Name — Title  or  Name | Title  or  Name, Title
+            sep = re.search(r'\s*[–—\-|,•·:]\s*', line)
+            if sep:
+                before = line[:sep.start()].strip()
+                after = line[sep.end():].strip()
+                names_before = self.NAME_RE.findall(before)
+                names_after = self.NAME_RE.findall(after)
+
+                if names_before and len(before.split()) >= 2:
+                    name = names_before[0]
+                    title = after
+                elif names_after and len(after.split()) >= 2:
+                    title = before
+                    name = names_after[0]
+
+            if not name:
+                names_in_line = self.NAME_RE.findall(line)
+                if names_in_line:
+                    name = names_in_line[0]
+
+            if not name:
+                for offset in [-1, 1]:
+                    ni = i + offset
+                    if 0 <= ni < len(lines):
+                        nl = lines[ni].strip()
+                        names_near = self.NAME_RE.findall(nl)
+                        if names_near:
+                            name = names_near[0]
+                            break
+
+            if not name:
+                continue
+
+            nearest_email = ''
+            nearest_dist = 999999
+            name_pos = text.find(name)
+            if name_pos >= 0:
+                for em, pos in emails_with_pos:
+                    dist = abs(pos - name_pos)
+                    if dist < nearest_dist:
+                        nearest_dist = dist
+                        nearest_email = em
+
+            if nearest_email and nearest_dist > 500:
+                nearest_email = ''
+
+            people.append({
+                'name': name,
+                'title': title,
+                'email': nearest_email,
+            })
+
+        return people
+
     # ── Main enrichment pipeline ──────────────────────────────────────────────
 
     async def _find_for_one(self, row: dict) -> dict:
@@ -336,6 +501,19 @@ class EmailFinder:
                 all_emails = found
                 source = "guessed_pattern"
 
+        # ── Contact discovery: find people on company website ────────────────
+        if website:
+            contacts = await self._find_contacts_on_website(website, company)
+            if contacts.get('contact_person'):
+                print(f"    👤  {company[:40]:<40}  found contact: {contacts['contact_person']} ({contacts.get('contact_title','?')})")
+                row['contact_person'] = contacts['contact_person']
+                row['contact_title']  = contacts['contact_title']
+                # If discovery found a company-domain email, prefer it
+                if contacts.get('email') and contacts.get('email_source') == 'company_website':
+                    row['email']          = contacts['email']
+                    row['email_source']   = 'company_website'
+                    row['email_confidence'] = 'high'
+
         # ── Pick best email ───────────────────────────────────────────────────
         if all_emails:
             company_domain = domain_from_url(website) if website else ""
@@ -375,7 +553,8 @@ class EmailFinder:
                     result = row
                 done += 1
                 found = "✓" if result.get("email") else "–"
-                print(f"  [{done:>3}/{total}] {found}  {result.get('company_name','')[:50]}")
+                contact = "👤" if result.get("contact_person") else "  "
+                print(f"  [{done:>3}/{total}] {found}{contact}  {result.get('company_name','')[:50]}")
                 return result
 
         try:

@@ -53,7 +53,7 @@
   --shadow:0 2px 8px rgba(0,0,0,.1);
   --shadow-lg:0 8px 32px rgba(0,0,0,.15);
 }
-html{font-size:16px}
+html{font-size:18px}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
 
 /* ── Topbar ── */
@@ -2401,11 +2401,11 @@ async function findContactsForLead(leadId) {
   if (!lead) return
 
   const resultEl = document.getElementById('contacts-result-' + leadId)
-  resultEl.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:8px 0">Searching for contacts…</div>'
+  resultEl.innerHTML = '<div style="font-size:14px;color:var(--muted);padding:12px 0">Searching for contacts…</div>'
 
   const hunterKey = localStorage.getItem('hunter_key')
   if (!hunterKey) {
-    resultEl.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px 0">Set your Hunter.io API key in Settings first</div>'
+    resultEl.innerHTML = '<div style="font-size:14px;color:var(--red);padding:12px 0">Set your Hunter.io API key in Settings first</div>'
     return
   }
 
@@ -2425,38 +2425,38 @@ async function findContactsForLead(leadId) {
 
     const data = await res.json()
     if (!res.ok) {
-      resultEl.innerHTML = `<div style="font-size:12px;color:var(--red);padding:8px 0">${esc(data.error || 'Failed')}</div>`
+      resultEl.innerHTML = `<div style="font-size:14px;color:var(--red);padding:12px 0">${esc(data.error || 'Failed')}</div>`
       return
     }
 
     if (!data.contacts || data.contacts.length === 0) {
-      resultEl.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:8px 0">No contacts found for this domain</div>'
+      resultEl.innerHTML = '<div style="font-size:14px;color:var(--muted);padding:12px 0">No contacts found for this domain</div>'
       return
     }
 
     resultEl.innerHTML = `
-      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Found ${data.contacts.length} contacts</div>
-      <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">Found ${data.contacts.length} contacts</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
         ${data.contacts.slice(0, 10).map((c, i) => `
-          <div style="font-size:12px;padding:6px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+          <div style="font-size:14px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div>
                 <strong>${esc(c.name || 'Unknown')}</strong>
-                ${c.title ? '<span style="color:var(--dim)"> · '+esc(c.title)+'</span>' : ''}
+                ${c.title ? '<span style="color:var(--text)"> · '+esc(c.title)+'</span>' : ''}
               </div>
-              <button class="action-btn" onclick="saveContact('${leadId}', '${esc(c.name)}', '${esc(c.title)}', '${esc(c.email)}', ${i})">Use</button>
+              <button class="action-btn" onclick="saveContact('${leadId}', '${esc(c.name)}', '${esc(c.title)}', '${esc(c.email)}', ${i})" style="font-size:13px;padding:6px 14px">Use</button>
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">
-              ${c.email ? '<a href="mailto:'+esc(c.email)+'" style="color:var(--accent)">'+esc(c.email)+'</a>' : ''}
-              ${c.confidence ? ' <span class="conf-${c.confidence > 90 ? "high" : c.confidence > 70 ? "medium" : "low"}" style="font-size:10px;padding:1px 4px;border-radius:3px">'+c.confidence+'%</span>' : ''}
+            <div style="font-size:13px;color:var(--text);margin-top:4px">
+              ${c.email ? '<a href="mailto:'+esc(c.email)+'" style="color:var(--accent);font-size:13px">'+esc(c.email)+'</a>' : ''}
+              ${c.confidence ? ' <span style="font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface);color:var(--muted);font-weight:500">'+c.confidence+'%</span>' : ''}
             </div>
           </div>
         `).join('')}
-        ${data.contacts.length > 10 ? '<div style="font-size:11px;color:var(--dim);text-align:center">… and '+(data.contacts.length-10)+' more</div>' : ''}
+        ${data.contacts.length > 10 ? '<div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0">… and '+(data.contacts.length-10)+' more</div>' : ''}
       </div>
     `
   } catch (e) {
-    resultEl.innerHTML = `<div style="font-size:12px;color:var(--red);padding:8px 0">Error: ${esc(e.message)}</div>`
+    resultEl.innerHTML = `<div style="font-size:14px;color:var(--red);padding:12px 0">Error: ${esc(e.message)}</div>`
   }
 }
 

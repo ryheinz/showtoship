@@ -932,6 +932,26 @@ a.ext-link:hover{text-decoration:underline}
           <div id="countries-chart" style="padding:24px"></div>
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="table-wrap" id="report-contactcov">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">👤 Contact Coverage</span></div>
+          <div id="contactcov-chart" style="padding:24px"></div>
+        </div>
+        <div class="table-wrap" id="report-titles">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🏷️ Top Contact Titles</span></div>
+          <div id="titles-chart" style="padding:24px"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="table-wrap" id="report-emailconf">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📧 Email Confidence</span></div>
+          <div id="emailconf-chart" style="padding:24px"></div>
+        </div>
+        <div class="table-wrap" id="report-contactsby">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📊 Contacts per Show</span></div>
+          <div id="contactsby-chart" style="padding:24px"></div>
+        </div>
+      </div>
       <div class="table-wrap" id="report-ai">
         <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🤖 Ask About Your Data</span></div>
         <div style="padding:24px;display:flex;flex-direction:column;gap:12px">
@@ -1322,6 +1342,10 @@ function loadReports() {
   renderShowPerformance()
   renderSourceChart()
   renderCountriesChart()
+  renderContactCoverage()
+  renderTopTitles()
+  renderEmailConfidence()
+  renderContactsPerShow()
 }
 
 function renderReportStats() {
@@ -1445,6 +1469,128 @@ function renderCountriesChart() {
       `).join('')}
     </div>
   ` : '<div style="text-align:center;color:var(--dim);padding:20px">No country data</div>'
+}
+
+function renderContactCoverage() {
+  const total = allLeads.length || 1
+  const withName = allLeads.filter(l => l.contact_name).length
+  const withEmail = allLeads.filter(l => l.email).length
+  const withBoth = allLeads.filter(l => l.contact_name && l.email).length
+  const withNeither = allLeads.filter(l => !l.contact_name && !l.email).length
+
+  const items = [
+    { label: 'Has contact name', count: withName, pct: Math.round(withName/total*100), color: 'var(--accent)' },
+    { label: 'Has email address', count: withEmail, pct: Math.round(withEmail/total*100), color: 'var(--accent2)' },
+    { label: 'Has both name + email', count: withBoth, pct: Math.round(withBoth/total*100), color: 'var(--green)' },
+    { label: 'No contact or email', count: withNeither, pct: Math.round(withNeither/total*100), color: 'var(--dim)' },
+  ]
+
+  document.getElementById('contactcov-chart').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${items.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${d.label}</span>
+            <span style="color:var(--muted)">${d.count} (${d.pct}%)</span>
+          </div>
+          <div style="height:22px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${d.pct}%;background:${d.color};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderTopTitles() {
+  const titleCounts = {}
+  for (const l of allLeads) {
+    if (!l.contact_title) continue
+    const t = l.contact_title.trim()
+    titleCounts[t] = (titleCounts[t] || 0) + 1
+  }
+  const sorted = Object.entries(titleCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  const max = sorted.length ? sorted[0][1] : 1
+  const palette = ['var(--accent)','var(--accent2)','var(--green)','var(--amber)','var(--purple)','var(--red)','var(--border2)','var(--muted)','var(--dim)','var(--text)']
+
+  document.getElementById('titles-chart').innerHTML = sorted.length ? `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${sorted.map(([title, count], i) => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%" title="${esc(title)}">${esc(title)}</span>
+            <span style="color:var(--muted)">${count}</span>
+          </div>
+          <div style="height:18px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${count/max*100}%;background:${palette[i%palette.length]};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No contact titles recorded</div>'
+}
+
+function renderEmailConfidence() {
+  const withEmail = allLeads.filter(l => l.email)
+  const total = withEmail.length || 1
+  const high = withEmail.filter(l => l.email_confidence === 'high').length
+  const medium = withEmail.filter(l => l.email_confidence === 'medium').length
+  const low = withEmail.filter(l => l.email_confidence === 'low').length
+  const unknown = withEmail.filter(l => !l.email_confidence).length
+
+  const items = [
+    { label: 'High confidence', count: high, pct: Math.round(high/total*100), color: 'var(--green)' },
+    { label: 'Medium confidence', count: medium, pct: Math.round(medium/total*100), color: 'var(--amber)' },
+    { label: 'Low confidence', count: low, pct: Math.round(low/total*100), color: 'var(--red)' },
+    { label: 'No confidence score', count: unknown, pct: Math.round(unknown/total*100), color: 'var(--dim)' },
+  ]
+
+  document.getElementById('emailconf-chart').innerHTML = total > 0 ? `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${items.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${d.label}</span>
+            <span style="color:var(--muted)">${d.count} (${d.pct}%)</span>
+          </div>
+          <div style="height:22px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${d.pct}%;background:${d.color};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No emails found yet</div>'
+}
+
+function renderContactsPerShow() {
+  const showData = allShows.map(s => {
+    const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase())
+    return {
+      name: s.name,
+      total: leads.length,
+      withContact: leads.filter(l => l.contact_name).length,
+      withEmail: leads.filter(l => l.email).length,
+    }
+  }).filter(d => d.total > 0).sort((a, b) => b.total - a.total).slice(0, 8)
+
+  const max = Math.max(...showData.map(d => d.total), 1)
+
+  document.getElementById('contactsby-chart').innerHTML = showData.length ? `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${showData.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${esc(d.name)}</span>
+            <span style="color:var(--muted)">${d.withContact}/${d.withEmail} contacts</span>
+          </div>
+          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex">
+            <div style="height:100%;width:${d.withContact/d.total*100*(d.total/max)}%;background:var(--accent2);border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--dim)"><span style="display:inline-block;width:10px;height:10px;background:var(--accent2);border-radius:2px;margin-right:4px"></span> Leads with contact info per show</div>
+  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No show data</div>'
 }
 
 async function askReport() {

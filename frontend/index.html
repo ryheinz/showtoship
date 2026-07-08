@@ -403,6 +403,10 @@ a.ext-link:hover{text-decoration:underline}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Admin
     </a>
+    <a class="nav-item" onclick="showPage('reports')" data-page="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      Reports
+    </a>
     <a class="nav-item" onclick="showPage('config')" data-page="config">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 1 1-14.14 0"/></svg>
       Settings
@@ -902,6 +906,46 @@ a.ext-link:hover{text-decoration:underline}
     </div>
   </div>
 
+  <div class="page" id="page-reports">
+    <div class="page-header">
+      <div><h1>Reports & Analytics</h1><p>Pipeline overview, show performance, and AI-powered analysis</p></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px" id="reports-content">
+      <div class="stats-row" id="report-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="table-wrap" id="report-pipeline">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📊 Pipeline Funnel</span></div>
+          <div id="pipeline-chart" style="padding:24px"></div>
+        </div>
+        <div class="table-wrap" id="report-showperf">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📈 Show Performance</span></div>
+          <div id="showperf-chart" style="padding:24px"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="table-wrap" id="report-source">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🔗 Lead Sources</span></div>
+          <div id="source-chart" style="padding:24px"></div>
+        </div>
+        <div class="table-wrap" id="report-countries">
+          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🌍 Top Countries</span></div>
+          <div id="countries-chart" style="padding:24px"></div>
+        </div>
+      </div>
+      <div class="table-wrap" id="report-ai">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🤖 Ask About Your Data</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:12px">
+          <p style="font-size:14px;color:var(--muted)">Ask any question about your leads, pipeline, or shows. The AI analyzes your data and gives you answers.</p>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="report-query" placeholder="e.g. Compare our pipeline across all shows, or Which show has the most qualified leads?" style="flex:1;padding:12px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px;outline:none">
+            <button class="btn-sm" onclick="askReport()">Ask</button>
+          </div>
+          <div id="report-answer" style="font-size:14px;line-height:1.7;color:var(--text);min-height:0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ══ SIDE PANEL (lead detail) ════════════════════════════════════ -->
@@ -1112,6 +1156,7 @@ function showPage(id) {
   if (id === 'shows')     loadShows();
   if (id === 'dashboard') loadDashboard();
   if (id === 'admin')     loadAdminUsers();
+  if (id === 'reports')   loadReports();
 }
 
 // ── Supabase API ──────────────────────────────────────────────────────────
@@ -1267,6 +1312,189 @@ function loadDashboard() {
         <td style="font-size:12px;color:var(--muted)">${s.date_start || '—'}</td>
         <td style="text-align:center">${leads}</td></tr>`;
     }).join('');
+  }
+}
+
+// ── Reports ────────────────────────────────────────────────────────────────
+function loadReports() {
+  renderReportStats()
+  renderPipelineChart()
+  renderShowPerformance()
+  renderSourceChart()
+  renderCountriesChart()
+}
+
+function renderReportStats() {
+  const total = allLeads.length
+  const contacted = allLeads.filter(l => l.status === 'contacted' || l.status === 'qualified' || l.status === 'opportunity').length
+  const converted = allLeads.filter(l => l.status === 'qualified' || l.status === 'opportunity').length
+  const shows = allShows.length
+  const withEmail = allLeads.filter(l => l.email).length
+  document.getElementById('report-stats').innerHTML = `
+    <div class="stat-card accent"><div class="stat-label">Total Leads</div><div class="stat-value">${total}</div><div class="stat-sub">Across ${shows} shows</div></div>
+    <div class="stat-card green"><div class="stat-label">Contacted</div><div class="stat-value">${contacted}</div><div class="stat-sub">${total ? Math.round(contacted/total*100) : 0}% of total</div></div>
+    <div class="stat-card purple"><div class="stat-label">Qualified / Opp.</div><div class="stat-value">${converted}</div><div class="stat-sub">${total ? Math.round(converted/total*100) : 0}% conversion</div></div>
+    <div class="stat-card amber"><div class="stat-label">With Email</div><div class="stat-value">${withEmail}</div><div class="stat-sub">${total ? Math.round(withEmail/total*100) : 0}% coverage</div></div>
+  `
+}
+
+function renderPipelineChart() {
+  const stages = ['new','contacted','qualified','disqualified','opportunity','closed']
+  const labels = ['New','Contacted','Qualified','Disqualified','Opportunity','Closed']
+  const counts = stages.map(s => allLeads.filter(l => l.status === s).length)
+  const max = Math.max(...counts, 1)
+  const colors = ['var(--accent)','var(--accent2)','var(--green)','var(--red)','var(--amber)','var(--purple)']
+  const total = allLeads.length
+
+  document.getElementById('pipeline-chart').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${counts.map((c, i) => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${labels[i]}</span>
+            <span style="color:var(--muted)">${c}${total ? ' ('+Math.round(c/total*100)+'%)' : ''}</span>
+          </div>
+          <div style="height:22px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${c/max*100}%;background:${colors[i]};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderShowPerformance() {
+  const showData = allShows.map(s => ({
+    name: s.name,
+    total: allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length,
+    qualified: allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase() && (l.status === 'qualified' || l.status === 'opportunity')).length,
+  })).sort((a, b) => b.total - a.total).slice(0, 8)
+
+  const max = Math.max(...showData.map(d => d.total), 1)
+  document.getElementById('showperf-chart').innerHTML = showData.length ? `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${showData.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${esc(d.name)}</span>
+            <span style="color:var(--muted)">${d.qualified}/${d.total} qualified</span>
+          </div>
+          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex">
+            <div style="height:100%;width:${d.total/max*100}%;background:var(--accent);border-radius:4px;transition:width .4s"></div>
+            <div style="height:100%;width:${d.qualified/d.total*100*(d.total/max)}%;background:var(--green);border-radius:4px;transition:width .4s;margin-left:2px"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--dim);display:flex;gap:16px">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:4px"></span> Total leads</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px"></span> Qualified</span>
+    </div>
+  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No shows yet</div>'
+}
+
+function renderSourceChart() {
+  const scraper = allLeads.filter(l => !(l.source_url||'').includes('linkedin.com') && l.source_url).length
+  const linkedin = allLeads.filter(l => (l.source_url||'').includes('linkedin.com')).length
+  const manual = allLeads.filter(l => !l.source_url).length
+  const total = allLeads.length || 1
+  const items = [
+    { label: 'Scraper', count: scraper, color: 'var(--accent)' },
+    { label: 'LinkedIn', count: linkedin, color: 'var(--accent2)' },
+    { label: 'Manual / CSV', count: manual, color: 'var(--border2)' },
+  ]
+  document.getElementById('source-chart').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${items.map(d => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${d.label}</span>
+            <span style="color:var(--muted)">${d.count} (${Math.round(d.count/total*100)}%)</span>
+          </div>
+          <div style="height:22px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${d.count/total*100}%;background:${d.color};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderCountriesChart() {
+  const byCountry = {}
+  for (const l of allLeads) {
+    const c = l.country || 'Unknown'
+    byCountry[c] = (byCountry[c] || 0) + 1
+  }
+  const sorted = Object.entries(byCountry).sort((a, b) => b[1] - a[1]).slice(0, 8)
+  const max = sorted.length ? sorted[0][1] : 1
+  const colors = ['var(--accent)','var(--accent2)','var(--green)','var(--amber)','var(--purple)','var(--red)','var(--border2)','var(--muted)']
+
+  document.getElementById('countries-chart').innerHTML = sorted.length ? `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${sorted.map(([country, count], i) => `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <span style="font-weight:600">${esc(country)}</span>
+            <span style="color:var(--muted)">${count}</span>
+          </div>
+          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${count/max*100}%;background:${colors[i%colors.length]};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No country data</div>'
+}
+
+async function askReport() {
+  const input = document.getElementById('report-query')
+  const q = input.value.trim()
+  if (!q) return
+  const answerEl = document.getElementById('report-answer')
+  answerEl.innerHTML = '<div style="color:var(--dim)">Thinking…</div>'
+
+  try {
+    const data = {
+      allLeads: allLeads.map(l => ({ company_name: l.company_name, status: l.status, country: l.country, tradeshow_name: l.tradeshow_name, email: l.email, contact_name: l.contact_name, industry: l.industry, category: l.category, priority: l.priority, assigned_to: l.assigned_to, source_url: l.source_url })),
+      allShows: allShows.map(s => ({ name: s.name, location: s.location, industry: s.industry, date_start: s.date_start, date_end: s.date_end })),
+      question: q,
+    }
+
+    const provider = localStorage.getItem('ai_provider') || 'default'
+    const customUrl = localStorage.getItem('ai_custom_url') || ''
+    const apiKey = provider === 'default' ? '' : (localStorage.getItem('ai_key_' + provider) || '')
+
+    const res = await fetch(AI_CHAT_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + getAuthToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: 'You are a sales data analyst. Answer the question based ONLY on the data provided. Give concise, actionable answers with numbers. If you need more info, say so.' },
+          { role: 'user', content: `Here is my sales data:\n\nLeads: ${JSON.stringify(data.allLeads)}\n\nShows: ${JSON.stringify(data.allShows)}\n\nQuestion: ${data.question}` },
+        ],
+        provider,
+        api_key: apiKey,
+        custom_url: customUrl,
+      }),
+    })
+
+    const text = await res.text()
+    let result
+    try { result = JSON.parse(text) } catch { result = { error: text } }
+
+    if (result.error) {
+      answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(result.error)}</div>`
+      return
+    }
+
+    const content = result.choices?.[0]?.message?.content || result.content || 'No answer'
+    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + content.replace(/\n/g, '<br>') + '</div>'
+  } catch (e) {
+    answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(e.message)}</div>`
   }
 }
 

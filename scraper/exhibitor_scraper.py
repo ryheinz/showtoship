@@ -87,6 +87,12 @@ EXHIBITOR_SCHEMA = {
             "selector": ".category, .sector, .industry, .product-group, .tags, .tag",
             "type": "text"
         },
+        # Products / services offered
+        {
+            "name": "products",
+            "selector": ".products, .product-list, .product-group, .services, [data-products], td:nth-child(4)",
+            "type": "text"
+        },
         # Short description / profile text
         {
             "name": "description",

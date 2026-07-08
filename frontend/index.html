@@ -475,6 +475,10 @@ a.ext-link:hover{text-decoration:underline}
           <option value="linkedin">LinkedIn Import</option>
           <option value="scraper">Scraper</option>
         </select>
+        <div class="search-box" style="max-width:200px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="filter-keywords" placeholder="Keywords (prod,desc…)…" oninput="debounceFilter()" style="font-size:12px">
+        </div>
         <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkAssign()" id="bulk-assign-btn" disabled>Assign</button>
@@ -492,6 +496,7 @@ a.ext-link:hover{text-decoration:underline}
           <th onclick="sortBy('tradeshow_name')" style="cursor:pointer">Show <span class="sort-arrow" data-sort="tradeshow_name"></span></th>
           <th onclick="sortBy('country')" style="cursor:pointer">Country <span class="sort-arrow" data-sort="country"></span></th>
           <th onclick="sortBy('category')" style="cursor:pointer">Category <span class="sort-arrow" data-sort="category"></span></th>
+          <th onclick="sortBy('products')" style="cursor:pointer">Products <span class="sort-arrow" data-sort="products"></span></th>
           <th onclick="sortBy('email')" style="cursor:pointer">Email <span class="sort-arrow" data-sort="email"></span></th>
           <th onclick="sortBy('status')" style="cursor:pointer">Status <span class="sort-arrow" data-sort="status"></span></th>
           <th onclick="sortBy('assigned_to')" style="cursor:pointer">Assigned <span class="sort-arrow" data-sort="assigned_to"></span></th>
@@ -499,7 +504,7 @@ a.ext-link:hover{text-decoration:underline}
           <th></th>
         </tr></thead>
         <tbody id="leads-table-body">
-          <tr><td colspan="11" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
+          <tr><td colspan="12" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1137,6 +1142,7 @@ function getFilteredLeads() {
   const status  = document.getElementById('filter-status').value;
   const assigned = document.getElementById('filter-assigned').value;
   const source  = document.getElementById('filter-source').value;
+  const keywords = document.getElementById('filter-keywords').value.toLowerCase().trim();
   let result = allLeads.filter(l => {
     if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
     if (show   && l.tradeshow_name?.toLowerCase() !== show.toLowerCase()) return false;
@@ -1146,6 +1152,11 @@ function getFilteredLeads() {
     if (document.getElementById('filter-email').value === 'none' && l.email) return false;
     if (source === 'linkedin' && !(l.source_url||'').includes('linkedin.com')) return false;
     if (source === 'scraper' && (l.source_url||'').includes('linkedin.com')) return false;
+    if (keywords) {
+      const target = [l.company_name, l.products, l.description, l.category, l.industry].filter(Boolean).join(' ').toLowerCase();
+      const terms = keywords.split(/\s+/).filter(Boolean);
+      if (!terms.some(t => target.includes(t))) return false;
+    }
     if (alphaFilter) {
       const name = (l.company_name||l.contact_name||'')
       if (name[0]?.toUpperCase() !== alphaFilter) return false;
@@ -1228,7 +1239,7 @@ function filterLeadsTable(resetPage) {
 function renderLeadsTable(leads) {
   const tbody = document.getElementById('leads-table-body');
   if (!leads.length) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
     return;
   }
   tbody.innerHTML = leads.map(l => `
@@ -1247,6 +1258,7 @@ function renderLeadsTable(leads) {
       <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
       <td style="font-size:13px">${esc(l.country||'—')}</td>
       <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.products||'')}">${esc(l.products||'—')}</td>
       <td>
         ${l.email ? `<a class="ext-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>
           <div style="font-size:10px;color:var(--dim)" class="conf-${l.email_confidence||''}">${l.email_confidence||''}</div>`
@@ -1278,6 +1290,8 @@ function openLeadPanel(id) {
       ${infoRow('City',     lead.city)}
       ${infoRow('Industry', lead.industry)}
       ${infoRow('Category', lead.category)}
+      ${infoRow('Products', lead.products)}
+      ${infoRow('Description', lead.description)}
       ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
     </div>
     <div class="panel-section">

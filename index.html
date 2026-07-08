@@ -654,6 +654,33 @@ a.ext-link:hover{text-decoration:underline}
           <button class="btn-outline" style="color:#e74c3c;border-color:#e74c3c;align-self:flex-start" onclick="authLogout()">Sign Out</button>
         </div>
       </div>
+      <div class="table-wrap" style="grid-column:1/-1">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">AI Assistant</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:14px;font-size:14px">
+          <div class="field">
+            <label>Provider</label>
+            <select id="ai-provider" onchange="onAIProviderChange()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+              <option value="default">Default (server-side — uses admin-configured key)</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="custom">Custom (OpenAI-compatible)</option>
+            </select>
+          </div>
+          <div class="field" id="ai-key-field" style="display:none">
+            <label>API Key</label>
+            <input type="password" id="ai-key" placeholder="sk-…" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+          </div>
+          <div class="field" id="ai-endpoint-field" style="display:none">
+            <label>API Endpoint</label>
+            <input type="url" id="ai-endpoint" placeholder="https://api.openai.com/v1/chat/completions" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+          </div>
+          <div style="color:var(--dim);font-size:13px" id="ai-provider-hint">
+            Uses the server-configured AI key. No setup needed.
+          </div>
+          <button class="btn-sm" onclick="saveAIProvider()" style="align-self:flex-start;padding:8px 20px">Save</button>
+          <div id="ai-save-result" style="font-size:13px"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2080,9 +2107,109 @@ async function adminDeleteUser(id, email) {
   } catch (e) { alert('Error: ' + e.message); }
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────
+// ── AI Provider ───────────────────────────────────────────────────────────
 
-const CHAT_URL = `https://${PROJECT_REF}.functions.supabase.co/chat`
+const AI_PROVIDER_KEY = 'ai_provider'
+const AI_KEY_KEY = 'ai_key'
+const AI_ENDPOINT_KEY = 'ai_endpoint'
+
+const AI_PROVIDER_CONFIG = {
+  default: { name: 'Default', endpoint: `https://${PROJECT_REF}.functions.supabase.co/chat`, needsKey: false },
+  openai:  { name: 'OpenAI',  endpoint: 'https://api.openai.com/v1/chat/completions', needsKey: true },
+  anthropic: { name: 'Anthropic Claude', endpoint: 'https://api.anthropic.com/v1/messages', needsKey: true },
+  custom:  { name: 'Custom',  endpoint: '', needsKey: true },
+}
+
+function loadAIProvider() {
+  const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'default'
+  document.getElementById('ai-provider').value = provider
+  if (provider !== 'default') {
+    document.getElementById('ai-key').value = localStorage.getItem(AI_KEY_KEY) || ''
+  }
+  if (provider === 'custom') {
+    document.getElementById('ai-endpoint').value = localStorage.getItem(AI_ENDPOINT_KEY) || ''
+  }
+  onAIProviderChange()
+}
+
+function onAIProviderChange() {
+  const val = document.getElementById('ai-provider').value
+  const cfg = AI_PROVIDER_CONFIG[val]
+  document.getElementById('ai-key-field').style.display = cfg.needsKey ? '' : 'none'
+  document.getElementById('ai-endpoint-field').style.display = val === 'custom' ? '' : 'none'
+  const hints = {
+    default: 'Uses the server-configured AI key. No setup needed.',
+    openai: 'Enter your OpenAI API key (starts with sk-…). Get one at platform.openai.com/api-keys',
+    anthropic: 'Enter your Anthropic API key (starts with sk-ant-…). Get one at console.anthropic.com',
+    custom: 'Enter your API key and the full endpoint URL (must be OpenAI-compatible).',
+  }
+  document.getElementById('ai-provider-hint').textContent = hints[val] || ''
+}
+
+function saveAIProvider() {
+  const provider = document.getElementById('ai-provider').value
+  localStorage.setItem(AI_PROVIDER_KEY, provider)
+  if (AI_PROVIDER_CONFIG[provider].needsKey) {
+    localStorage.setItem(AI_KEY_KEY, document.getElementById('ai-key').value.trim())
+  } else {
+    localStorage.removeItem(AI_KEY_KEY)
+  }
+  if (provider === 'custom') {
+    localStorage.setItem(AI_ENDPOINT_KEY, document.getElementById('ai-endpoint').value.trim())
+  } else {
+    localStorage.removeItem(AI_ENDPOINT_KEY)
+  }
+  document.getElementById('ai-save-result').textContent = '✓ Saved'
+  document.getElementById('ai-save-result').style.color = 'var(--green)'
+  setTimeout(() => document.getElementById('ai-save-result').textContent = '', 2000)
+}
+
+async function callAI(messages) {
+  const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'default'
+  const cfg = AI_PROVIDER_CONFIG[provider]
+  let endpoint = cfg.endpoint
+  let headers = { 'Content-Type': 'application/json' }
+  let body
+
+  if (provider === 'default') {
+    headers['Authorization'] = 'Bearer ' + getAuthToken()
+    body = JSON.stringify({ message: messages[messages.length-1].content, history: messages.slice(0,-1) })
+  } else if (provider === 'openai' || provider === 'custom') {
+    const key = localStorage.getItem(AI_KEY_KEY)
+    if (!key) throw new Error('API key not configured — go to Settings')
+    if (provider === 'custom') endpoint = localStorage.getItem(AI_ENDPOINT_KEY) || ''
+    if (!endpoint) throw new Error('Custom endpoint URL not configured — go to Settings')
+    headers['Authorization'] = 'Bearer ' + key
+    body = JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 800 })
+  } else if (provider === 'anthropic') {
+    const key = localStorage.getItem(AI_KEY_KEY)
+    if (!key) throw new Error('API key not configured — go to Settings')
+    headers['x-api-key'] = key
+    headers['anthropic-version'] = '2023-06-01'
+    const systemMsg = messages.find(m => m.role === 'system')
+    const userMsgs = messages.filter(m => m.role !== 'system')
+    body = JSON.stringify({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 800,
+      system: systemMsg?.content || '',
+      messages: userMsgs,
+    })
+  }
+
+  const res = await fetch(endpoint, { method: 'POST', headers, body })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw new Error(`API error (${res.status}): ${errText.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  if (provider === 'anthropic') {
+    return data.content?.[0]?.text || ''
+  }
+  return data.choices?.[0]?.message?.content || data.reply || ''
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────
 
 let chatHistory = []
 let chatOpen = false
@@ -2115,21 +2242,23 @@ async function sendChat() {
   msgs.appendChild(typingEl)
   msgs.scrollTop = msgs.scrollHeight
 
+  // Build messages with system prompt
+  const systemPrompt = `You are a sales intelligence assistant for ShowToShip, a tool that scrapes tradeshow exhibitor lists to find leads. You help salespeople research companies and find contacts. Be concise and actionable.`
+
   try {
-    const res = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: chatHistory }),
-    })
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...chatHistory.slice(-10),
+      { role: 'user', content: text },
+    ]
+    const reply = await callAI(messages)
     typingEl.remove()
-    const data = await res.json()
-    const reply = data.reply || data.error || 'Sorry, something went wrong'
-    msgs.innerHTML += `<div class="chat-msg ai">${esc(reply)}</div>`
+    msgs.innerHTML += `<div class="chat-msg ai">${reply}</div>`
     chatHistory.push({ role: 'user', content: text })
     chatHistory.push({ role: 'assistant', content: reply })
   } catch (e) {
     typingEl.remove()
-    msgs.innerHTML += `<div class="chat-msg ai" style="color:var(--red)">Error: ${esc(e.message)}</div>`
+    msgs.innerHTML += `<div class="chat-msg ai" style="color:var(--red)">Error: ${esc(e.message)} — <a href="#" onclick="showPage('config');return false" style="color:var(--accent)">Settings</a></div>`
   }
   msgs.scrollTop = msgs.scrollHeight
 }
@@ -2137,6 +2266,8 @@ async function sendChat() {
 document.getElementById('chat-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChat()
 })
+
+loadAIProvider()
 
 // ── Init ──────────────────────────────────────────────────────────────────
 (async function init() {

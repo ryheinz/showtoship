@@ -491,6 +491,11 @@ a.ext-link:hover{text-decoration:underline}
           <option value="has">Has Email</option>
           <option value="none">No Email</option>
         </select>
+        <select class="filter-select" id="filter-contact" onchange="filterLeadsTable(true)">
+          <option value="">All Contacts</option>
+          <option value="has">Has Contact</option>
+          <option value="none">No Contact</option>
+        </select>
         <select class="filter-select" id="filter-source" onchange="filterLeadsTable(true)">
           <option value="">All Sources</option>
           <option value="linkedin">LinkedIn Import</option>
@@ -770,7 +775,7 @@ a.ext-link:hover{text-decoration:underline}
       </div>
 
       <div class="table-wrap">
-        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🤖 Running Scrapers via GitHub Actions</span></div>
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🔧 Running Scrapers via GitHub Actions</span></div>
         <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
           <p>For large or automated scrapes, use the GitHub Actions workflow:</p>
           <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
@@ -941,12 +946,12 @@ a.ext-link:hover{text-decoration:underline}
 <button class="chat-btn" id="chat-btn" onclick="toggleChat()" title="AI Assistant">💬</button>
 <div class="chat-panel" id="chat-panel">
   <div class="chat-head">
-    <span>🤖 AI Assistant</span>
+    <span>🚢 AI Assistant</span>
     <button onclick="toggleChat()">✕</button>
   </div>
   <div class="chat-msgs" id="chat-msgs">
     <div class="chat-welcome">
-      <div style="font-size:32px;margin-bottom:8px">🤖</div>
+      <div style="font-size:32px;margin-bottom:8px">🚢</div>
       <strong>Ask me anything</strong><br>
       Try: "Tell me about Acme Corp",<br>
       "Find contacts for a company",<br>
@@ -1248,6 +1253,9 @@ function getFilteredLeads() {
     const wf = document.getElementById('filter-website')?.value
     if (wf === 'has' && !l.website) return false
     if (wf === 'none' && l.website) return false
+    const cf = document.getElementById('filter-contact')?.value
+    if (cf === 'has' && !l.contact_name) return false
+    if (cf === 'none' && l.contact_name) return false
     if (keywords) {
       const target = [l.company_name, l.products, l.description, l.category, l.industry].filter(Boolean).join(' ').toLowerCase();
       const terms = keywords.split(/\s+/).filter(Boolean);
@@ -1429,7 +1437,7 @@ function openLeadPanel(id) {
       ${infoRow('Description', lead.description)}
       ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
       <div class="info-row" style="margin-top:10px;gap:8px;flex-direction:column">
-        <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:10px;font-size:13px">🤖 Ask AI about this company</button>
+        <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:10px;font-size:13px">🚢 Ask AI about this company</button>
         <button class="btn-sm" onclick="findContactsForLead('${lead.id}')" style="width:100%;padding:10px;font-size:13px">👤 Find Contacts</button>
       </div>
       <div id="contacts-result-${lead.id}" style="margin-top:8px"></div>

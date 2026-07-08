@@ -1950,7 +1950,7 @@ function loadShows() {
     const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
     return `<tr>
       <td><div class="company-name" style="cursor:pointer" onclick="filterByShow('${esc(s.name)}')">${esc(s.name)}</div></td>
-      <td style="font-size:12px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.website ? `<a href="${esc(s.website)}" target="_blank" class="ext-link" style="font-size:12px">${esc(s.website)}</a>` : '<span style="color:var(--dim)">—</span>'}</td>
+      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" ondblclick="editShowUrl('${esc(s.id)}',this)" title="Double-click to edit">${s.website ? `<a href="${esc(s.website)}" target="_blank" class="ext-link" style="font-size:12px">${esc(s.website)}</a>` : '<span style="color:var(--dim)">—</span>'}</td>
       <td style="font-size:13px;color:var(--muted)">${esc(s.location||'—')}</td>
       <td style="font-size:13px;color:var(--muted)">${esc(s.industry||'—')}</td>
       <td style="font-size:12px;color:var(--muted)">${s.date_start||''}${s.date_end?' → '+s.date_end:''}</td>
@@ -2073,10 +2073,10 @@ async function triggerScrape() {
 
   const { job_id } = await res.json();
   log('✓ Job submitted! Waiting for results…', 'ok');
-  pollScrapeJob(job_id, log);
+  pollScrapeJob(job_id, log, showName, urls);
 }
 
-async function pollScrapeJob(jobId, log) {
+async function pollScrapeJob(jobId, log, showName, urls) {
   for (let i = 0; i < 120; i++) {
     await sleep(3000);
     const data = await sbFetch(`scrape_jobs?select=*&id=eq.${jobId}&limit=1`);
@@ -2090,6 +2090,7 @@ async function pollScrapeJob(jobId, log) {
       log(`✓ Complete! ${job.leads_found || 0} leads found (${job.leads_new || 0} new, ${job.leads_updated || 0} updated)`, 'ok');
       await loadAllData();
       loadLeads();
+      afterScrapeSaveUrl(showName, urls);
       document.getElementById('run-btn').disabled = false;
       return;
     } else if (job.status === 'failed') {
@@ -2101,6 +2102,50 @@ async function pollScrapeJob(jobId, log) {
   log('⏱ Timed out — check GitHub Actions for status', 'err');
   document.getElementById('run-btn').disabled = false;
 }
+
+async function afterScrapeSaveUrl(showName, urls) {
+  const show = allShows.find(s => s.name.toLowerCase() === showName.toLowerCase());
+  if (!show || !urls) return;
+  const firstUrl = urls.split('\n')[0].split(',')[0].trim();
+  if (!firstUrl) return;
+  try {
+    await sbFetch(`tradeshows?id=eq.${show.id}`, { method: 'PATCH', body: JSON.stringify({ website: firstUrl }) });
+    show.website = firstUrl;
+    loadShows();
+  } catch (e) { console.error('Failed to save scrape URL', e); }
+}
+
+function editShowUrl(showId, td) {
+  const current = td.querySelector('a')?.textContent || td.querySelector('span')?.textContent || '';
+  const input = document.createElement('input');
+  input.type = 'url';
+  input.value = displayUrl(current);
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+  input.style.background = 'var(--surface2)';
+  input.style.color = 'var(--text)';
+  input.style.border = '1px solid var(--accent)';
+  input.style.borderRadius = '4px';
+  input.style.padding = '2px 6px';
+  input.style.fontSize = '12px';
+  td.innerHTML = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+  const save = async () => {
+    const val = input.value.trim();
+    try {
+      await sbFetch(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ website: val }) });
+      const show = allShows.find(s => s.id === showId);
+      if (show) show.website = val;
+    } catch (e) { console.error('Failed to save URL', e); }
+    loadShows();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+}
+
+function displayUrl(u) { return u === '—' ? '' : u; }
 
 // ── Import CSV ──────────────────────────────────────────────────────────
 function openImportModal() {

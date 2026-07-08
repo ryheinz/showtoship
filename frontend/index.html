@@ -1053,7 +1053,7 @@ a.ext-link:hover{text-decoration:underline}
 <div class="modal-overlay" id="show-modal">
   <div class="modal">
     <div class="modal-head">
-      <h3>Add Tradeshow</h3>
+      <h3 id="show-modal-title">Add Tradeshow</h3>
       <button class="modal-close" onclick="closeModal('show-modal')">✕</button>
     </div>
     <div class="modal-body">
@@ -1072,7 +1072,7 @@ a.ext-link:hover{text-decoration:underline}
       </div>
       <div class="form-actions">
         <button class="btn-outline" onclick="closeModal('show-modal')">Cancel</button>
-        <button class="btn-sm" onclick="saveShow()">Add Show</button>
+        <button class="btn-sm" id="show-save-btn" onclick="saveShow()">Add Show</button>
       </div>
     </div>
   </div>
@@ -1239,6 +1239,7 @@ async function testSupabase() {
 // ── Load data ─────────────────────────────────────────────────────────────
 let allLeads = [];
 let allShows = [];
+let editShowId = null;
 
 async function loadAllData() {
   selected.clear();
@@ -1958,6 +1959,7 @@ function loadShows() {
       <td style="text-align:center;cursor:pointer" onclick="toggleAttending('${esc(s.id)}',this)">${s.attending ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--dim)">—</span>'}</td>
       <td>
         <button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button>
+        <button class="action-btn" style="margin-left:4px" onclick="editShow('${esc(s.id)}')">Edit</button>
         <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="clearShowLeads('${esc(s.id)}','${esc(s.name)}')">Clear</button>
         <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="deleteShow('${esc(s.id)}','${esc(s.name)}')">✕</button>
       </td>
@@ -1965,7 +1967,20 @@ function loadShows() {
   }).join('');
 }
 
-function openAddShowModal() { openModal('show-modal'); }
+function openAddShowModal() {
+  editShowId = null;
+  document.getElementById('show-modal-title').textContent = 'Add Tradeshow';
+  document.getElementById('show-save-btn').textContent = 'Add Show';
+  document.getElementById('show-name-input').value = '';
+  document.getElementById('show-name-input').disabled = false;
+  document.getElementById('show-location').value = '';
+  document.getElementById('show-industry').value = '';
+  document.getElementById('show-date-start').value = '';
+  document.getElementById('show-date-end').value = '';
+  document.getElementById('show-website').value = '';
+  document.getElementById('show-attending').checked = false;
+  openModal('show-modal');
+}
 
 async function saveShow() {
   const data = {
@@ -1981,10 +1996,31 @@ async function saveShow() {
   if (data.date_start && data.date_end && data.date_end < data.date_start) {
     alert('End date must be after start date'); return;
   }
-  await sbFetch('tradeshows', { method: 'POST', body: JSON.stringify(data) });
+  if (editShowId) {
+    await sbFetch(`tradeshows?id=eq.${editShowId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  } else {
+    await sbFetch('tradeshows', { method: 'POST', body: JSON.stringify(data) });
+  }
   closeModal('show-modal');
   await loadShowsData();
   loadShows();
+}
+
+function editShow(id) {
+  const show = allShows.find(s => s.id === id);
+  if (!show) return;
+  editShowId = id;
+  document.getElementById('show-modal-title').textContent = 'Edit Tradeshow';
+  document.getElementById('show-save-btn').textContent = 'Save Changes';
+  document.getElementById('show-name-input').value = show.name || '';
+  document.getElementById('show-name-input').disabled = true;
+  document.getElementById('show-location').value = show.location || '';
+  document.getElementById('show-industry').value = show.industry || '';
+  document.getElementById('show-date-start').value = show.date_start || '';
+  document.getElementById('show-date-end').value = show.date_end || '';
+  document.getElementById('show-website').value = show.website || '';
+  document.getElementById('show-attending').checked = !!show.attending;
+  openModal('show-modal');
 }
 
 async function clearShowLeads(id, name) {

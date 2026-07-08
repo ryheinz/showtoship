@@ -1265,7 +1265,7 @@ function renderLeadsTable(leads) {
           </div>
         </div>
       </td>
-      <td style="font-size:13px">${esc(l.contact_name||'—')}</td>
+      <td style="font-size:13px">${esc(l.contact_name||'—')}${l.contact_title ? `<div style="font-size:10px;color:var(--dim)">${esc(l.contact_title)}</div>` : ''}</td>
       <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
       <td style="font-size:13px">${esc(l.country||'—')}</td>
       <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>
@@ -1307,7 +1307,7 @@ function openLeadPanel(id) {
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Contact</div>
-      ${infoRow('Name',  lead.contact_name)}
+      ${lead.contact_name ? `<div class="info-row"><span class="info-label">Name</span><span class="info-value">${esc(lead.contact_name)}${lead.contact_title ? ' <span style="color:var(--dim)">· '+esc(lead.contact_title)+'</span>' : ''}</span></div>` : infoRow('Name','—')}
       ${lead.email ? `<div class="info-row"><span class="info-label">Email</span><a href="mailto:${lead.email}" class="ext-link">${esc(lead.email)}</a></div>` : infoRow('Email','—')}
       ${infoRow('Phone', lead.phone)}
       ${lead.linkedin_url ? `<div class="info-row"><span class="info-label">LinkedIn</span><a href="${lead.linkedin_url}" target="_blank" class="ext-link">↗ Profile</a></div>` : ''}

@@ -309,22 +309,32 @@ a.ext-link:hover{text-decoration:underline}
     <span></span><span></span><span></span>
   </button>
   <div class="logo">
-    <svg class="logo-svg" viewBox="0 0 220 28" fill="none">
+    <svg class="logo-svg" viewBox="0 0 240 30" fill="none">
       <g transform="translate(0,2)">
-        <path d="M3 18 L6 10 L10 7 L24 7 L28 10 L31 18 Z" fill="var(--accent)"/>
-        <rect x="11" y="3" width="12" height="5" rx="1" fill="var(--accent)" opacity="0.7"/>
-        <rect x="12.5" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)"/>
-        <rect x="16" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)"/>
-        <rect x="19.5" y="4.5" width="2" height="2.5" rx="0.4" fill="var(--bg)" opacity="0.5"/>
-        <line x1="22" y1=".5" x2="22" y2="3" stroke="var(--accent2)" stroke-width="1.2"/>
-        <circle cx="22" cy="-.5" r="1.5" fill="var(--accent2)"/>
-        <path d="M31 16 Q37 14 42 17 Q46 19 50 16" stroke="var(--accent2)" stroke-width=".8" opacity=".3"/>
+        <!-- Hull -->
+        <path d="M2 20 Q6 24 16 24 Q26 24 30 20 L27 20 Q24 22 16 22 Q8 22 5 20 Z" fill="var(--accent)"/>
+        <!-- Deck -->
+        <path d="M4 20 L28 20 L26 17 L6 17 Z" fill="var(--accent)" opacity="0.85"/>
+        <!-- Cabin -->
+        <rect x="12" y="13" width="8" height="4" rx="1" fill="var(--accent)" opacity="0.7"/>
+        <rect x="13" y="14" width="2" height="2.5" rx="0.5" fill="var(--bg)" opacity="0.6"/>
+        <rect x="17" y="14" width="2" height="2.5" rx="0.5" fill="var(--bg)" opacity="0.6"/>
+        <!-- Mast -->
+        <line x1="10" y1="2" x2="10" y2="17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Main sail -->
+        <path d="M11 15 Q17 12 20 10 Q23 8 25 5 L11 5 Z" fill="var(--accent)" opacity="0.3"/>
+        <!-- Small sail -->
+        <path d="M9 16 Q7 14 6 13 Q5 11 6 8 L9 8 Z" fill="var(--accent2)" opacity="0.25"/>
+        <!-- Flag at top -->
+        <path d="M10 2 L10 0 L14 1 Z" fill="var(--accent2)"/>
+        <!-- Water line -->
+        <path d="M1 22 Q6 20 12 22 Q18 24 24 22 Q28 20 32 22" stroke="var(--accent)" stroke-width="0.6" opacity="0.2" fill="none"/>
       </g>
-      <text x="44" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="18" font-weight="700" fill="var(--text)">Show</text>
-      <text x="90" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="12" font-weight="500" fill="var(--muted)">to</text>
-      <text x="112" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="18" font-weight="700" fill="var(--accent)">Ship</text>
+      <text x="46" y="20" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="19" font-weight="700" fill="var(--text)" letter-spacing=".02em">Show</text>
+      <text x="98" y="20" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="12" font-weight="500" fill="var(--muted)" letter-spacing=".04em">to</text>
+      <text x="126" y="20" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="19" font-weight="700" fill="var(--accent)" letter-spacing=".02em">Ship</text>
     </svg>
-    <div style="font-size:9px;color:var(--dim);letter-spacing:.02em;margin-top:-2px">by Ryan Heinz</div>
+    <div style="font-size:9px;color:var(--dim);letter-spacing:.06em;margin-top:-1px">by Ryan Heinz</div>
   </div>
   <div style="height:20px;width:1px;background:var(--border);margin:0 4px"></div>
   <span style="font-size:13px;color:var(--muted)" id="active-show-label">No show selected</span>

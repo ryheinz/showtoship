@@ -501,9 +501,18 @@ a.ext-link:hover{text-decoration:underline}
           <input type="text" id="filter-country" placeholder="Country…" oninput="debounceFilter()" style="font-size:12px" list="country-datalist">
         </div>
         <datalist id="country-datalist"></datalist>
+        <select class="filter-select" id="filter-website" onchange="filterLeadsTable(true)" style="font-size:12px">
+          <option value="">All</option>
+          <option value="has">Has Website</option>
+          <option value="none">No Website</option>
+        </select>
         <div class="search-box" style="max-width:200px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="filter-keywords" placeholder="Keywords (prod,desc…)…" oninput="debounceFilter()" style="font-size:12px">
+        </div>
+        <div style="position:relative">
+          <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="toggleColumnsPopup()">Columns</button>
+          <div id="columns-popup" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:100;min-width:160px;font-size:12px"></div>
         </div>
         <span style="color:var(--dim);font-size:12px" id="selected-count"></span>
         <button class="btn-outline" style="font-size:12px;padding:5px 10px" onclick="bulkStatus()" id="bulk-status-btn" disabled>Status</button>
@@ -515,22 +524,9 @@ a.ext-link:hover{text-decoration:underline}
       </div>
       <div class="letter-bar" id="letter-bar"></div>
       <table>
-        <thead><tr>
-          <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
-          <th onclick="sortBy('company_name')" style="cursor:pointer">Company <span class="sort-arrow" data-sort="company_name"></span></th>
-          <th onclick="sortBy('contact_name')" style="cursor:pointer">Contact <span class="sort-arrow" data-sort="contact_name"></span></th>
-          <th onclick="sortBy('tradeshow_name')" style="cursor:pointer">Show <span class="sort-arrow" data-sort="tradeshow_name"></span></th>
-          <th onclick="sortBy('country')" style="cursor:pointer">Country <span class="sort-arrow" data-sort="country"></span></th>
-          <th onclick="sortBy('category')" style="cursor:pointer">Category <span class="sort-arrow" data-sort="category"></span></th>
-          <th onclick="sortBy('products')" style="cursor:pointer">Products <span class="sort-arrow" data-sort="products"></span></th>
-          <th onclick="sortBy('email')" style="cursor:pointer">Email <span class="sort-arrow" data-sort="email"></span></th>
-          <th onclick="sortBy('status')" style="cursor:pointer">Status <span class="sort-arrow" data-sort="status"></span></th>
-          <th onclick="sortBy('assigned_to')" style="cursor:pointer">Assigned <span class="sort-arrow" data-sort="assigned_to"></span></th>
-          <th onclick="sortBy('priority')" style="cursor:pointer">Priority <span class="sort-arrow" data-sort="priority"></span></th>
-          <th></th>
-        </tr></thead>
+        <thead><tr id="leads-table-header"></tr></thead>
         <tbody id="leads-table-body">
-          <tr><td colspan="12" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
+          <tr><td colspan="99" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1249,6 +1245,9 @@ function getFilteredLeads() {
     if (document.getElementById('filter-email').value === 'none' && l.email) return false;
     if (source === 'linkedin' && !(l.source_url||'').includes('linkedin.com')) return false;
     if (source === 'scraper' && (l.source_url||'').includes('linkedin.com')) return false;
+    const wf = document.getElementById('filter-website')?.value
+    if (wf === 'has' && !l.website) return false
+    if (wf === 'none' && l.website) return false
     if (keywords) {
       const target = [l.company_name, l.products, l.description, l.category, l.industry].filter(Boolean).join(' ').toLowerCase();
       const terms = keywords.split(/\s+/).filter(Boolean);
@@ -1333,41 +1332,78 @@ function filterLeadsTable(resetPage) {
   document.getElementById('last-page').disabled = pageNum >= pages;
 }
 
+function colCount() {
+  return 1 + ALL_COLS.filter(c => isColVisible(c.key)).length + 1 // checkbox + visible cols + edit
+}
+
+function renderLeadsHeader() {
+  const thead = document.getElementById('leads-table-header')
+  const arrowHtml = (key) => sortField === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
+  thead.innerHTML = `<th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+    ${ALL_COLS.filter(c => isColVisible(c.key)).map(c =>
+      `<th onclick="sortBy('${c.key}')" style="cursor:pointer">${c.label}<span class="sort-arrow" data-sort="${c.key}">${arrowHtml(c.key)}</span></th>`
+    ).join('')}
+    <th></th>`
+}
+
 function renderLeadsTable(leads) {
+  renderLeadsHeader()
   const tbody = document.getElementById('leads-table-body');
   if (!leads.length) {
-    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colCount()}" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>`;
     return;
   }
-  tbody.innerHTML = leads.map(l => `
-    <tr data-id="${l.id}">
+  const visibleCols = ALL_COLS.filter(c => isColVisible(c.key)).map(c => c.key)
+  tbody.innerHTML = leads.map(l => {
+    let cells = ''
+    for (const key of visibleCols) {
+      switch (key) {
+        case 'company_name':
+          cells += `<td>
+            <div class="company-cell">
+              <div class="company-avatar">${(l.company_name||'?')[0]}</div>
+              <div>
+                <div class="company-name" style="cursor:pointer" onclick="openLeadPanel('${l.id}')">${esc(l.company_name)}</div>
+                <div class="company-meta">${esc(l.country||'')} ${l.booth_number ? '· Booth '+esc(l.booth_number) : ''}</div>
+              </div>
+            </div>
+          </td>`
+          break
+        case 'contact_name':
+          cells += `<td style="font-size:13px">${esc(l.contact_name||'—')}${l.contact_title ? `<div style="font-size:10px;color:var(--dim)">${esc(l.contact_title)}</div>` : ''}</td>`
+          break
+        case 'tradeshow_name':
+          cells += `<td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>`
+          break
+        case 'country':
+          cells += `<td style="font-size:13px">${esc(l.country||'—')}</td>`
+          break
+        case 'category':
+          cells += `<td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>`
+          break
+        case 'products':
+          cells += `<td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.products||'')}">${esc(l.products||'—')}</td>`
+          break
+        case 'email':
+          cells += `<td>${l.email ? `<a class="ext-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a><div style="font-size:10px;color:var(--dim)" class="conf-${l.email_confidence||''}">${l.email_confidence||''}</div>` : '<span style="color:var(--dim)">—</span>'}</td>`
+          break
+        case 'status':
+          cells += `<td>${statusBadge(l.status)}</td>`
+          break
+        case 'assigned_to':
+          cells += `<td style="font-size:12px;color:var(--muted)">${esc(l.assigned_to||'—')}</td>`
+          break
+        case 'priority':
+          cells += `<td>${priorityBadge(l.priority)}</td>`
+          break
+      }
+    }
+    return `<tr data-id="${l.id}">
       <td><input type="checkbox" style="accent-color:var(--accent)" onchange="handleSelect(this,'${l.id}')"></td>
-      <td>
-        <div class="company-cell">
-          <div class="company-avatar">${(l.company_name||'?')[0]}</div>
-          <div>
-            <div class="company-name" style="cursor:pointer" onclick="openLeadPanel('${l.id}')">${esc(l.company_name)}</div>
-            <div class="company-meta">${esc(l.country||'')} ${l.booth_number ? '· Booth '+esc(l.booth_number) : ''}</div>
-          </div>
-        </div>
-      </td>
-      <td style="font-size:13px">${esc(l.contact_name||'—')}${l.contact_title ? `<div style="font-size:10px;color:var(--dim)">${esc(l.contact_title)}</div>` : ''}</td>
-      <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
-      <td style="font-size:13px">${esc(l.country||'—')}</td>
-      <td style="font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.category||'—')}</td>
-      <td style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.products||'')}">${esc(l.products||'—')}</td>
-      <td>
-        ${l.email ? `<a class="ext-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>
-          <div style="font-size:10px;color:var(--dim)" class="conf-${l.email_confidence||''}">${l.email_confidence||''}</div>`
-          : '<span style="color:var(--dim)">—</span>'}
-      </td>
-      <td>${statusBadge(l.status)}</td>
-      <td style="font-size:12px;color:var(--muted)">${esc(l.assigned_to||'—')}</td>
-      <td>${priorityBadge(l.priority)}</td>
-      <td>
-        <button class="action-btn" onclick="openLeadPanel('${l.id}')">Edit</button>
-      </td>
-    </tr>`).join('');
+      ${cells}
+      <td><button class="action-btn" onclick="openLeadPanel('${l.id}')">Edit</button></td>
+    </tr>`
+  }).join('');
 }
 
 // ── Lead panel ────────────────────────────────────────────────────────────
@@ -1830,6 +1866,62 @@ function sortBy(field) {
 }
 let debounceTimer;
 function debounceFilter() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => filterLeadsTable(true), 200); }
+
+// ── Column visibility ────────────────────────────────────────────────────
+const ALL_COLS = [
+  { key: 'company_name', label: 'Company' },
+  { key: 'contact_name', label: 'Contact' },
+  { key: 'tradeshow_name', label: 'Show' },
+  { key: 'country', label: 'Country' },
+  { key: 'category', label: 'Category' },
+  { key: 'products', label: 'Products' },
+  { key: 'email', label: 'Email' },
+  { key: 'status', label: 'Status' },
+  { key: 'assigned_to', label: 'Assigned' },
+  { key: 'priority', label: 'Priority' },
+]
+let hiddenCols = new Set()
+
+function loadColumnPrefs() {
+  const saved = localStorage.getItem('hidden_cols')
+  if (saved) hiddenCols = new Set(JSON.parse(saved))
+}
+
+function saveColumnPrefs() {
+  localStorage.setItem('hidden_cols', JSON.stringify([...hiddenCols]))
+}
+
+function isColVisible(key) { return !hiddenCols.has(key) }
+
+function toggleColumn(key) {
+  if (hiddenCols.has(key)) hiddenCols.delete(key)
+  else hiddenCols.add(key)
+  saveColumnPrefs()
+  filterLeadsTable(true)
+}
+
+function toggleColumnsPopup() {
+  const popup = document.getElementById('columns-popup')
+  popup.style.display = popup.style.display === 'none' ? 'block' : 'none'
+  if (popup.style.display === 'block') {
+    popup.innerHTML = ALL_COLS.map(c => `
+      <label style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer;white-space:nowrap;border-radius:4px"
+             onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <input type="checkbox" ${isColVisible(c.key) ? 'checked' : ''} onchange="toggleColumn('${c.key}')" style="accent-color:var(--accent)">
+        ${c.label}
+      </label>
+    `).join('')
+  }
+}
+
+// Close columns popup when clicking outside
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('columns-popup')
+  if (popup && !e.target.closest('#columns-popup') && !e.target.closest('button[onclick*="toggleColumnsPopup"]')) {
+    popup.style.display = 'none'
+  }
+})
+
 let selected = new Set();
 let teamMembers = [];
 
@@ -2376,6 +2468,7 @@ document.getElementById('chat-input')?.addEventListener('keydown', e => {
 
 loadAIProvider()
 loadHunterKey()
+loadColumnPrefs()
 
 // ── Init ──────────────────────────────────────────────────────────────────
 (async function init() {

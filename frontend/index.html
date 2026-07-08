@@ -943,10 +943,6 @@ a.ext-link:hover{text-decoration:underline}
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <div class="table-wrap" id="report-emailconf">
-          <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📧 Email Confidence</span></div>
-          <div id="emailconf-chart" style="padding:24px"></div>
-        </div>
         <div class="table-wrap" id="report-contactsby">
           <div class="table-toolbar"><span style="font-weight:600;font-size:15px">📊 Contacts per Show</span></div>
           <div id="contactsby-chart" style="padding:24px"></div>
@@ -1344,7 +1340,6 @@ function loadReports() {
   renderCountriesChart()
   renderContactCoverage()
   renderTopTitles()
-  renderEmailConfidence()
   renderContactsPerShow()
 }
 
@@ -1528,38 +1523,6 @@ function renderTopTitles() {
       `).join('')}
     </div>
   ` : '<div style="text-align:center;color:var(--dim);padding:20px">No contact titles recorded</div>'
-}
-
-function renderEmailConfidence() {
-  const withEmail = allLeads.filter(l => l.email)
-  const total = withEmail.length || 1
-  const high = withEmail.filter(l => l.email_confidence === 'high').length
-  const medium = withEmail.filter(l => l.email_confidence === 'medium').length
-  const low = withEmail.filter(l => l.email_confidence === 'low').length
-  const unknown = withEmail.filter(l => !l.email_confidence).length
-
-  const items = [
-    { label: 'High confidence', count: high, pct: Math.round(high/total*100), color: 'var(--green)' },
-    { label: 'Medium confidence', count: medium, pct: Math.round(medium/total*100), color: 'var(--amber)' },
-    { label: 'Low confidence', count: low, pct: Math.round(low/total*100), color: 'var(--red)' },
-    { label: 'No confidence score', count: unknown, pct: Math.round(unknown/total*100), color: 'var(--dim)' },
-  ]
-
-  document.getElementById('emailconf-chart').innerHTML = total > 0 ? `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      ${items.map(d => `
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-            <span style="font-weight:600">${d.label}</span>
-            <span style="color:var(--muted)">${d.count} (${d.pct}%)</span>
-          </div>
-          <div style="height:22px;background:var(--bg);border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${d.pct}%;background:${d.color};border-radius:4px;transition:width .4s"></div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  ` : '<div style="text-align:center;color:var(--dim);padding:20px">No emails found yet</div>'
 }
 
 function renderContactsPerShow() {

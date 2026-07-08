@@ -681,6 +681,21 @@ a.ext-link:hover{text-decoration:underline}
           <div id="ai-save-result" style="font-size:13px"></div>
         </div>
       </div>
+      <div class="table-wrap" style="grid-column:1/-1">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:14px">Contact Finder</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:14px;font-size:14px">
+          <div class="field">
+            <label>Hunter.io API Key</label>
+            <input type="password" id="hunter-key" placeholder="Enter your Hunter.io API key" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)">
+          </div>
+          <div style="color:var(--dim);font-size:13px">
+            Get a free API key at <a href="https://hunter.io/api-keys" target="_blank" class="ext-link">hunter.io/api-keys</a> (free tier: 25 requests/month, up to 50 contacts each).
+            This key is stored in your browser and sent to the server to find contacts.
+          </div>
+          <button class="btn-sm" onclick="saveHunterKey()" style="align-self:flex-start;padding:8px 20px">Save</button>
+          <div id="hunter-save-result" style="font-size:13px"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -961,6 +976,7 @@ const LS = {
 const PROJECT_REF = SB_URL.replace('https://', '').split('.')[0];
 const DISPATCH_URL = `https://${PROJECT_REF}.functions.supabase.co/dispatch-scrape`;
 const ADMIN_FN_URL = `https://${PROJECT_REF}.functions.supabase.co/admin-users`;
+const FIND_CONTACTS_URL = `https://${PROJECT_REF}.functions.supabase.co/find-contacts`;
 
 
 
@@ -1374,9 +1390,11 @@ function openLeadPanel(id) {
       ${infoRow('Products', lead.products)}
       ${infoRow('Description', lead.description)}
       ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
-      <div class="info-row" style="margin-top:8px">
+      <div class="info-row" style="margin-top:8px;gap:6px;flex-direction:column">
         <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:8px;font-size:12px">🤖 Ask AI about this company</button>
+        <button class="btn-sm" onclick="findContactsForLead('${lead.id}')" style="width:100%;padding:8px;font-size:12px">👤 Find Contacts</button>
       </div>
+      <div id="contacts-result-${lead.id}" style="margin-top:8px"></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Contact</div>
@@ -2164,6 +2182,95 @@ function saveAIProvider() {
   setTimeout(() => document.getElementById('ai-save-result').textContent = '', 2000)
 }
 
+// ── Contact Finder (Hunter.io) ───────────────────────────────────────────
+
+function loadHunterKey() {
+  const key = localStorage.getItem('hunter_key') || ''
+  document.getElementById('hunter-key').value = key
+}
+
+function saveHunterKey() {
+  const key = document.getElementById('hunter-key').value.trim()
+  localStorage.setItem('hunter_key', key)
+  document.getElementById('hunter-save-result').textContent = key ? '✓ Saved' : '✓ Cleared'
+  document.getElementById('hunter-save-result').style.color = 'var(--green)'
+  setTimeout(() => document.getElementById('hunter-save-result').textContent = '', 2000)
+}
+
+async function findContactsForLead(leadId) {
+  const lead = allLeads.find(l => l.id === leadId)
+  if (!lead) return
+
+  const resultEl = document.getElementById('contacts-result-' + leadId)
+  resultEl.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:8px 0">Searching for contacts…</div>'
+
+  const hunterKey = localStorage.getItem('hunter_key')
+  if (!hunterKey) {
+    resultEl.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px 0">Set your Hunter.io API key in Settings first</div>'
+    return
+  }
+
+  try {
+    const res = await fetch(FIND_CONTACTS_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + getAuthToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        website: lead.website || '',
+        company_name: lead.company_name || '',
+        api_key: hunterKey,
+      }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      resultEl.innerHTML = `<div style="font-size:12px;color:var(--red);padding:8px 0">${esc(data.error || 'Failed')}</div>`
+      return
+    }
+
+    if (!data.contacts || data.contacts.length === 0) {
+      resultEl.innerHTML = '<div style="font-size:12px;color:var(--dim);padding:8px 0">No contacts found for this domain</div>'
+      return
+    }
+
+    resultEl.innerHTML = `
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Found ${data.contacts.length} contacts</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${data.contacts.slice(0, 10).map((c, i) => `
+          <div style="font-size:12px;padding:6px 8px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong>${esc(c.name || 'Unknown')}</strong>
+                ${c.title ? '<span style="color:var(--dim)"> · '+esc(c.title)+'</span>' : ''}
+              </div>
+              <button class="action-btn" onclick="saveContact('${leadId}', '${esc(c.name)}', '${esc(c.title)}', '${esc(c.email)}', ${i})">Use</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">
+              ${c.email ? '<a href="mailto:'+esc(c.email)+'" style="color:var(--accent)">'+esc(c.email)+'</a>' : ''}
+              ${c.confidence ? ' <span class="conf-${c.confidence > 90 ? "high" : c.confidence > 70 ? "medium" : "low"}" style="font-size:10px;padding:1px 4px;border-radius:3px">'+c.confidence+'%</span>' : ''}
+            </div>
+          </div>
+        `).join('')}
+        ${data.contacts.length > 10 ? '<div style="font-size:11px;color:var(--dim);text-align:center">… and '+(data.contacts.length-10)+' more</div>' : ''}
+      </div>
+    `
+  } catch (e) {
+    resultEl.innerHTML = `<div style="font-size:12px;color:var(--red);padding:8px 0">Error: ${esc(e.message)}</div>`
+  }
+}
+
+async function saveContact(leadId, name, title, email) {
+  if (!confirm(`Save "${name}"${title ? ' ('+title+')' : ''} as contact for this lead?`)) return
+  await updateLead(leadId, 'contact_name', name)
+  await updateLead(leadId, 'contact_title', title)
+  if (email) await updateLead(leadId, 'email', email)
+  // Refresh the panel
+  openLeadPanel(leadId)
+  document.getElementById('contacts-result-' + leadId).innerHTML = ''
+}
+
 async function callAI(messages) {
   const provider = localStorage.getItem(AI_PROVIDER_KEY) || 'default'
   const cfg = AI_PROVIDER_CONFIG[provider]
@@ -2268,6 +2375,7 @@ document.getElementById('chat-input')?.addEventListener('keydown', e => {
 })
 
 loadAIProvider()
+loadHunterKey()
 
 // ── Init ──────────────────────────────────────────────────────────────────
 (async function init() {

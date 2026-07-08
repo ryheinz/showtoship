@@ -215,6 +215,17 @@ async def save_leads(rows: list[dict],
         return {"saved": total, "new": new_count, "updated": updated_count}
 
 
+async def update_job_status(job_id: str, status: str, error: str = None, github_run_id: str = None):
+    """Update an existing job's status without creating a new record."""
+    async with aiohttp.ClientSession() as session:
+        data: dict[str, str] = {"status": status}
+        if error:
+            data["error"] = error
+        if github_run_id:
+            data["github_run_id"] = github_run_id
+        await _patch(session, "scrape_jobs", {"id": job_id}, data)
+
+
 # ── Job management ────────────────────────────────────────────────────────────
 
 async def create_job(tradeshow_name: str, urls: list[str],

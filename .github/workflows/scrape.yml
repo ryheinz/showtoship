@@ -36,6 +36,10 @@ on:
         default: "false"
         type: choice
         options: ["false", "true"]
+      job_id:
+        description: "Pre-existing scrape job ID (for frontend integration)"
+        required: false
+        type: string
 
 jobs:
   scrape:
@@ -92,6 +96,8 @@ jobs:
           PB_SEARCH_PHANTOM_ID:  ${{ secrets.PB_SEARCH_PHANTOM_ID }}
           PB_PROFILE_PHANTOM_ID: ${{ secrets.PB_PROFILE_PHANTOM_ID }}
           SHOW_NAME:         ${{ github.event.inputs.show_name }}
+          JOB_ID:            ${{ github.event.inputs.job_id || '' }}
+          GITHUB_RUN_ID:     ${{ github.run_id }}
         run: |
           SAFE=$(echo "${SHOW_NAME}" | tr ' ' '_' | tr -cd '[:alnum:]_-')
           OUTPUT="${SAFE}_$(date +%Y%m%d_%H%M).xlsx"
@@ -104,6 +110,7 @@ jobs:
           [ "${{ github.event.inputs.find_emails }}"  = "true" ] && ARGS="$ARGS --emails"
           [ "${{ github.event.inputs.linkedin_enrich }}" = "true" ] && ARGS="$ARGS --linkedin"
 
+          [ -n "$JOB_ID" ] && ARGS="$ARGS --job-id $JOB_ID"
           python scraper/run_pipeline.py $ARGS
 
           echo "OUTPUT_FILE=${OUTPUT}" >> $GITHUB_ENV

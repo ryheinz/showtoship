@@ -19,12 +19,13 @@ Usage:
 
 import asyncio
 import argparse
+import os
 from pathlib import Path
 from datetime import datetime
 
 from exhibitor_scraper import ExhibitorScraper, export_to_excel, export_to_csv
 from email_finder import EmailFinder, update_excel_with_emails
-from db_writer import save_leads, create_job, fail_job
+from db_writer import save_leads, create_job, update_job_status, fail_job
 from linkedin_enricher import enrich_all
 
 
@@ -37,6 +38,7 @@ async def main():
     p.add_argument("--deep",      action="store_true")
     p.add_argument("--emails",    action="store_true")
     p.add_argument("--linkedin",  action="store_true")
+    p.add_argument("--job-id", dest="job_id", default=None)
     args = p.parse_args()
 
     urls = [l.strip() for l in Path(args.urls).read_text().splitlines()
@@ -54,8 +56,13 @@ async def main():
     print(f"  Options: {options}")
     print(f"{'='*60}\n")
 
-    # Create job record in DB
-    job_id = await create_job(args.show_name, urls, options)
+    # Create or update job record in DB
+    if args.job_id:
+        job_id = args.job_id
+        github_run_id = os.environ.get("GITHUB_RUN_ID")
+        await update_job_status(job_id, "running", github_run_id=github_run_id)
+    else:
+        job_id = await create_job(args.show_name, urls, options)
 
     try:
         # ── Phase 1 + 2: scrape exhibitor data ─────────────────────────────

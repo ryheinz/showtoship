@@ -475,6 +475,11 @@ a.ext-link:hover{text-decoration:underline}
           <option value="linkedin">LinkedIn Import</option>
           <option value="scraper">Scraper</option>
         </select>
+        <div class="search-box" style="max-width:140px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="filter-country" placeholder="Country…" oninput="debounceFilter()" style="font-size:12px" list="country-datalist">
+        </div>
+        <datalist id="country-datalist"></datalist>
         <div class="search-box" style="max-width:200px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" id="filter-keywords" placeholder="Keywords (prod,desc…)…" oninput="debounceFilter()" style="font-size:12px">
@@ -1096,6 +1101,10 @@ function loadLeads() {
   const names = [...new Set(allLeads.map(l => l.assigned_to).filter(Boolean))];
   asel.innerHTML = '<option value="">All Team</option>' +
     names.map(n => `<option value="${n}">${n}</option>`).join('');
+  // Populate country datalist
+  const countries = [...new Set(allLeads.map(l => l.country).filter(Boolean))].sort();
+  document.getElementById('country-datalist').innerHTML =
+    countries.map(c => `<option value="${esc(c)}">`).join('');
 }
 
 let currentFilter = '';
@@ -1143,7 +1152,9 @@ function getFilteredLeads() {
   const assigned = document.getElementById('filter-assigned').value;
   const source  = document.getElementById('filter-source').value;
   const keywords = document.getElementById('filter-keywords').value.toLowerCase().trim();
+  const countryFilter = document.getElementById('filter-country').value.toLowerCase().trim();
   let result = allLeads.filter(l => {
+    if (countryFilter && !(l.country||'').toLowerCase().includes(countryFilter)) return false;
     if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
     if (show   && l.tradeshow_name?.toLowerCase() !== show.toLowerCase()) return false;
     if (status && l.status !== status) return false;

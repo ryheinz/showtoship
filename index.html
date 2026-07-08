@@ -61,25 +61,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .logo{display:flex;align-items:center;gap:12px;cursor:default;user-select:none}
 .logo-svg{height:56px;width:auto;display:block}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-.user-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;font-size:12px;cursor:pointer;transition:all .15s}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 14px 5px 8px;font-size:13px;cursor:pointer;transition:all .15s}
 .user-chip:hover{border-color:var(--border2);background:var(--surface3)}
 .avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
 .btn-icon:hover{background:var(--surface2);color:var(--text)}
-.btn-sm{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:10px 18px;font-family:var(--font);font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.01em}
+.btn-sm{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:12px 20px;font-family:var(--font);font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.01em}
 .btn-sm:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 2px 8px rgba(91,141,239,.25)}
 .btn-sm:active{transform:translateY(0)}
-.btn-outline{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:10px 18px;font-family:var(--font);font-size:13.5px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:12px 20px;font-family:var(--font);font-size:15px;font-weight:500;cursor:pointer;transition:all .15s}
 .btn-outline:hover{border-color:var(--text);color:var(--text);background:var(--surface2)}
 .letter-bar{display:flex;gap:2px;padding:8px 0;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:0}
-.letter-bar button{background:none;border:none;padding:4px 10px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:3px;font-family:var(--font);transition:all .1s;line-height:1.6}
+.letter-bar button{background:none;border:none;padding:4px 12px;font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:3px;font-family:var(--font);transition:all .1s;line-height:1.6}
 .letter-bar button:hover{background:var(--surface2);color:var(--text)}
 .letter-bar button.active{background:var(--accent);color:#fff}
 
 /* ── Sidebar ── */
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 0 32px;overflow-y:auto}
 .nav-section{margin-bottom:8px}
-.nav-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:16px 20px 8px;opacity:.8}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 20px;font-size:15px;color:var(--muted);cursor:pointer;border-radius:0;transition:all .15s,border-color .2s;text-decoration:none;border-left:2px solid transparent;font-weight:500}
+.nav-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:18px 20px 10px;opacity:.8}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;font-size:16px;color:var(--muted);cursor:pointer;border-radius:0;transition:all .15s,border-color .2s;text-decoration:none;border-left:2px solid transparent;font-weight:500}
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:rgba(91,141,239,.1);color:var(--accent);border-left-color:var(--accent);font-weight:600}
 .nav-item svg{width:18px;height:18px;flex-shrink:0;opacity:.7}
@@ -94,17 +94,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* ── Page headers ── */
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px}
-.page-header h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
-.page-header p{font-size:14px;color:var(--muted);margin-top:4px}
+.page-header h1{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.page-header p{font-size:15px;color:var(--muted);margin-top:4px}
 .header-actions{display:flex;gap:10px;flex-shrink:0}
 
 /* ── Stats row ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;box-shadow:var(--shadow-sm);transition:box-shadow .2s,border-color .2s}
 .stat-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
-.stat-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.stat-value{font-size:30px;font-weight:700;letter-spacing:-.04em;line-height:1.1}
-.stat-sub{font-size:11px;color:var(--dim);margin-top:6px}
+.stat-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.stat-value{font-size:32px;font-weight:700;letter-spacing:-.04em;line-height:1.1}
+.stat-sub{font-size:12px;color:var(--dim);margin-top:6px}
 .stat-card.accent .stat-value{color:var(--accent)}
 .stat-card.green  .stat-value{color:var(--green)}
 .stat-card.amber  .stat-value{color:var(--amber)}
@@ -115,27 +115,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .table-toolbar{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:200px;transition:border-color .2s}
 .search-box:focus-within{border-color:var(--accent)}
-.search-box input{background:none;border:none;outline:none;font-family:var(--font);font-size:14px;color:var(--text);width:100%}
+.search-box input{background:none;border:none;outline:none;font-family:var(--font);font-size:15px;color:var(--text);width:100%}
 .search-box input::placeholder{color:var(--dim)}
-.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-family:var(--font);font-size:13.5px;color:var(--text);outline:none;cursor:pointer;transition:border-color .2s}
+.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-family:var(--font);font-size:15px;color:var(--text);outline:none;cursor:pointer;transition:border-color .2s}
 .filter-select:focus{border-color:var(--accent)}
 .filter-select option{background:var(--surface2)}
-table{width:100%;border-collapse:collapse;font-size:14.5px}
-thead th{text-align:left;padding:14px 18px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface2)}
+table{width:100%;border-collapse:collapse;font-size:16px}
+thead th{text-align:left;padding:14px 18px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface2)}
 thead th input[type=checkbox]{accent-color:var(--accent)}
 tbody td{padding:14px 18px;border-bottom:1px solid var(--border);vertical-align:middle;transition:background .12s}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:rgba(255,255,255,.03)}
 tbody tr.selected td{background:rgba(91,141,239,.06)}
 .company-cell{display:flex;align-items:center;gap:12px}
-.company-avatar{width:38px;height:38px;border-radius:7px;background:linear-gradient(135deg,var(--surface3),var(--surface2));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--accent);flex-shrink:0;text-transform:uppercase;border:1px solid var(--border)}
+.company-avatar{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--surface3),var(--surface2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--accent);flex-shrink:0;text-transform:uppercase;border:1px solid var(--border)}
 .company-name{font-weight:600;color:var(--text)}
-.company-meta{font-size:12.5px;color:var(--muted);margin-top:2px}
-a.ext-link{color:var(--accent);text-decoration:none;font-size:14px}
+.company-meta{font-size:13px;color:var(--muted);margin-top:3px}
+a.ext-link{color:var(--accent);text-decoration:none;font-size:15px}
 a.ext-link:hover{text-decoration:underline}
 
 /* ── Badges ── */
-.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:5px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:5px 14px;border-radius:5px;font-size:13.5px;font-weight:600;letter-spacing:.03em}
 .badge-new{background:rgba(91,141,239,.15);color:var(--accent)}
 .badge-contacted{background:rgba(78,205,196,.15);color:var(--accent2)}
 .badge-qualified{background:rgba(62,207,142,.15);color:var(--green)}
@@ -150,7 +150,7 @@ a.ext-link:hover{text-decoration:underline}
 .conf-low{color:var(--red)}
 
 /* ── Action menu ── */
-.action-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-family:var(--font);font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
+.action-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;font-family:var(--font);font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
 .action-btn:hover{border-color:var(--border2);color:var(--text);background:var(--surface3)}
 
 /* ── Modal / Panel ── */
@@ -159,7 +159,7 @@ a.ext-link:hover{text-decoration:underline}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:modalIn .2s ease}
 @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.modal-head h3{font-size:17px;font-weight:700}
+.modal-head h3{font-size:19px;font-weight:700}
 .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:4px;transition:all .15s}
 .modal-close:hover{color:var(--text);background:var(--surface2)}
 .modal-body{padding:24px}
@@ -169,7 +169,7 @@ a.ext-link:hover{text-decoration:underline}
 .form-grid.full{grid-template-columns:1fr}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.field input,.field textarea,.field select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+.field input,.field textarea,.field select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-family:var(--font);font-size:14px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
 .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,141,239,.15)}
 .field textarea{resize:vertical;min-height:80px}
 .field select option{background:var(--surface2)}
@@ -188,15 +188,15 @@ a.ext-link:hover{text-decoration:underline}
 .switch input:checked+.slider::before{transform:translateX(18px)}
 
 /* ── Lead detail side panel ── */
-.side-panel{position:fixed;right:-520px;top:62px;width:520px;height:calc(100vh - 62px);background:var(--surface);border-left:1px solid var(--border);z-index:100;transition:right .3s cubic-bezier(.22,1,.36,1);overflow-y:auto;padding:32px;box-shadow:-4px 0 24px rgba(0,0,0,.2)}
+.side-panel{position:fixed;right:-520px;top:62px;width:520px;height:calc(100vh - 62px);background:var(--surface);border-left:1px solid var(--border);z-index:100;transition:right .3s cubic-bezier(.22,1,.36,1);overflow-y:auto;padding:36px;box-shadow:-4px 0 24px rgba(0,0,0,.2)}
 .side-panel.open{right:0}
-.panel-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;border-radius:4px;padding:4px 8px;transition:all .15s}
+.panel-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:24px;border-radius:4px;padding:6px 10px;transition:all .15s}
 .panel-close:hover{color:var(--text);background:var(--surface2)}
-.panel-company{font-size:24px;font-weight:700;margin-bottom:8px}
-.panel-meta{font-size:15px;color:var(--muted);margin-bottom:28px}
+.panel-company{font-size:26px;font-weight:700;margin-bottom:8px}
+.panel-meta{font-size:16px;color:var(--muted);margin-bottom:28px}
 .panel-section{margin-bottom:28px}
-.panel-section-title{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
-.info-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);font-size:15px}
+.panel-section-title{font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.info-row{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);font-size:16px}
 .info-row:last-child{border-bottom:none}
 .info-label{color:var(--muted)}
 .info-value{color:var(--text);font-weight:500;text-align:right;max-width:60%}
@@ -280,24 +280,24 @@ a.ext-link:hover{text-decoration:underline}
 }
 
 /* ── Chat ── */
-.chat-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:24px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:1000;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.chat-btn{position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:1000;display:flex;align-items:center;justify-content:center;transition:transform .2s}
 .chat-btn:hover{transform:scale(1.1)}
-.chat-panel{position:fixed;bottom:90px;right:24px;width:380px;height:520px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:999;display:none;flex-direction:column;overflow:hidden}
+.chat-panel{position:fixed;bottom:90px;right:24px;width:400px;height:560px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:999;display:none;flex-direction:column;overflow:hidden}
 .chat-panel.open{display:flex}
-.chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:14px}
-.chat-head button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px}
-.chat-msgs{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5}
-.chat-msg{max-width:85%;padding:10px 12px;border-radius:10px;word-wrap:break-word}
+.chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:15px}
+.chat-head button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.6}
+.chat-msg{max-width:88%;padding:12px 16px;border-radius:10px;word-wrap:break-word}
 .chat-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
 .chat-msg.ai{background:var(--bg);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px;border:1px solid var(--border)}
 .chat-msg.ai p{margin:4px 0}
 .chat-msg.ai ul{margin:4px 0;padding-left:18px}
-.chat-input-wrap{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border)}
-.chat-input-wrap input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;outline:none}
+.chat-input-wrap{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border)}
+.chat-input-wrap input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:15px;outline:none}
 .chat-input-wrap input:focus{border-color:var(--accent)}
-.chat-input-wrap button{padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:500}
-.chat-typing{padding:6px 12px;font-size:12px;color:var(--dim);font-style:italic;align-self:flex-start}
-.chat-welcome{text-align:center;padding:40px 20px;color:var(--dim);font-size:13px;line-height:1.6}
+.chat-input-wrap button{padding:10px 18px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:500}
+.chat-typing{padding:8px 14px;font-size:13px;color:var(--dim);font-style:italic;align-self:flex-start}
+.chat-welcome{text-align:center;padding:40px 20px;color:var(--dim);font-size:15px;line-height:1.7}
 .chat-welcome strong{color:var(--text)}
 </style>
 </head>
@@ -336,8 +336,6 @@ a.ext-link:hover{text-decoration:underline}
     </svg>
     <div style="font-size:9px;color:var(--dim);letter-spacing:.06em;margin-top:-1px">by Ryan Heinz</div>
   </div>
-  <div style="height:20px;width:1px;background:var(--border);margin:0 4px"></div>
-  <span style="font-size:13px;color:var(--muted)" id="active-show-label">No show selected</span>
   <div class="topbar-right">
     <button class="btn-icon" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px;transition:all .15s">🌙</button>
     <button class="btn-outline" onclick="showPage('config')">⚙ Settings</button>
@@ -513,7 +511,7 @@ a.ext-link:hover{text-decoration:underline}
         </select>
         <div class="search-box" style="max-width:140px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="filter-country" placeholder="Country…" oninput="debounceFilter()" style="font-size:13.5px" list="country-datalist">
+          <input type="text" id="filter-country" placeholder="Country…" oninput="debounceFilter()" style="font-size:15px" list="country-datalist">
         </div>
         <datalist id="country-datalist"></datalist>
         <select class="filter-select" id="filter-website" onchange="filterLeadsTable(true)">
@@ -523,7 +521,7 @@ a.ext-link:hover{text-decoration:underline}
         </select>
         <div class="search-box" style="max-width:200px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="filter-keywords" placeholder="Keywords (prod,desc…)…" oninput="debounceFilter()" style="font-size:13.5px">
+          <input type="text" id="filter-keywords" placeholder="Keywords (prod,desc…)…" oninput="debounceFilter()" style="font-size:15px">
         </div>
         <div style="position:relative">
           <button class="btn-outline" onclick="toggleColumnsPopup()">Columns</button>
@@ -1544,8 +1542,8 @@ function openLeadPanel(id) {
       ${infoRow('Description', lead.description)}
       ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
       <div class="info-row" style="margin-top:10px;gap:8px;flex-direction:column">
-        <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:12px;font-size:14px">🚢 Ask AI about this company</button>
-        <button class="btn-sm" onclick="findContactsForLead('${lead.id}')" style="width:100%;padding:12px;font-size:14px">👤 Find Contacts</button>
+        <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:14px;font-size:15px">🚢 Ask AI about this company</button>
+        <button class="btn-sm" onclick="findContactsForLead('${lead.id}')" style="width:100%;padding:14px;font-size:15px">👤 Find Contacts</button>
       </div>
       <div id="contacts-result-${lead.id}" style="margin-top:8px"></div>
     </div>

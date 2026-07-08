@@ -1312,7 +1312,8 @@ function findDuplicates() {
 function filterLeadsTable(resetPage) {
   if (resetPage) pageNum = 1;
   selected.clear();
-  document.getElementById('select-all').checked = false;
+  const selAll = document.getElementById('select-all');
+  if (selAll) selAll.checked = false;
   let filtered = getFilteredLeads();
   const total = filtered.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -1338,6 +1339,7 @@ function colCount() {
 
 function renderLeadsHeader() {
   const thead = document.getElementById('leads-table-header')
+  if (!thead) return
   const arrowHtml = (key) => sortField === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''
   thead.innerHTML = `<th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
     ${ALL_COLS.filter(c => isColVisible(c.key)).map(c =>
@@ -2468,10 +2470,11 @@ document.getElementById('chat-input')?.addEventListener('keydown', e => {
 
 loadAIProvider()
 loadHunterKey()
-loadColumnPrefs()
 
 // ── Init ──────────────────────────────────────────────────────────────────
 (async function init() {
+  loadColumnPrefs()
+
   const ue = localStorage.getItem(LS.ue);
   const at = localStorage.getItem(LS.at);
   const role = localStorage.getItem(LS.ur);

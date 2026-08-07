@@ -77,7 +77,9 @@ serve(async (req) => {
     const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email)
     if (error) return json({ error: error.message }, 400)
     if (data.user) {
-      await supabase.from('user_profiles').insert({
+      // Use adminClient (service role): the tightened RLS on user_profiles no
+      // longer grants INSERT to the caller's own authenticated session.
+      await adminClient.from('user_profiles').insert({
         id: data.user.id,
         email: data.user.email,
         role: 'user',
@@ -106,7 +108,9 @@ serve(async (req) => {
   if (req.method === 'DELETE' && path.includes('/users/')) {
     const userId = path.split('/').pop()
     if (!userId) return json({ error: 'Missing user ID' }, 400)
-    await supabase.from('user_profiles').delete().eq('id', userId)
+    // adminClient (service role): tightened RLS no longer grants DELETE to the
+    // caller's own authenticated session.
+    await adminClient.from('user_profiles').delete().eq('id', userId)
     const { error } = await adminClient.auth.admin.deleteUser(userId)
     if (error) return json({ error: error.message }, 500)
     return json({ ok: true })

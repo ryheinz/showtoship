@@ -1583,7 +1583,7 @@ async function askReport() {
       { role: 'user', content: userMsg },
     ])
 
-    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + reply.replace(/\n/g, '<br>') + '</div>'
+    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + esc(reply).replace(/\n/g, '<br>') + '</div>'
   } catch (e) {
     answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(e.message)}</div>`
   }
@@ -2413,7 +2413,7 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
-function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function toggleTheme() {
   const html = document.documentElement;
   const isLight = html.getAttribute('data-theme') === 'light';
@@ -3030,7 +3030,7 @@ async function sendChat() {
     ]
     const reply = await callAI(messages)
     typingEl.remove()
-    msgs.innerHTML += `<div class="chat-msg ai">${reply}</div>`
+    msgs.innerHTML += `<div class="chat-msg ai">${esc(reply)}</div>`
     chatHistory.push({ role: 'user', content: text })
     chatHistory.push({ role: 'assistant', content: reply })
   } catch (e) {

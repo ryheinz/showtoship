@@ -99,8 +99,15 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
   completed_at    TIMESTAMPTZ
 );
 
--- ── Unique constraint: one company per show ──────────────────
-CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_show ON leads(company_name, tradeshow_id);
+-- ── Unique constraint: one company per show (case/whitespace-insensitive) ─
+-- company_name_key normalizes the name so "Acme Corp" and "ACME Corp "
+-- collide on the same lead instead of creating duplicate rows, and lets
+-- the scraper use an atomic INSERT ... ON CONFLICT upsert.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS company_name_key TEXT
+  GENERATED ALWAYS AS (lower(trim(company_name))) STORED;
+
+DROP INDEX IF EXISTS idx_leads_company_show;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_show ON leads(company_name_key, tradeshow_id);
 
 -- ── Indexes ───────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_leads_tradeshow   ON leads(tradeshow_id);

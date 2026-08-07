@@ -7,6 +7,25 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
 }
 
+// Any authenticated team member can dispatch a scrape (that's the app's normal
+// workflow), but the target URLs are attacker-controllable input handed straight
+// to a GitHub Actions runner — reject anything that isn't a plain public http(s)
+// URL so this can't be used to probe internal/link-local addresses or the cloud
+// metadata endpoint from the runner's network.
+const MAX_URLS_PER_JOB = 50
+
+function isSafeExhibitorUrl(raw: string): boolean {
+  let u: URL
+  try { u = new URL(raw) } catch { return false }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (host === 'localhost' || host === '0.0.0.0' || host === '169.254.169.254') return false
+  if (/^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host)) return false
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false
+  if (host === '::1' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) return false
+  return true
+}
+
 serve(async (req) => {
   try {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
@@ -56,6 +75,27 @@ serve(async (req) => {
       })
     }
 
+    const urlList = urls.split('\n').map((s: string) => s.trim()).filter(Boolean)
+    if (urlList.length === 0) {
+      return new Response(JSON.stringify({ error: 'At least one URL is required' }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+    if (urlList.length > MAX_URLS_PER_JOB) {
+      return new Response(JSON.stringify({ error: `Too many URLs — max ${MAX_URLS_PER_JOB} per job` }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+    const unsafeUrl = urlList.find((u: string) => !isSafeExhibitorUrl(u))
+    if (unsafeUrl) {
+      return new Response(JSON.stringify({ error: `Invalid or disallowed URL: ${unsafeUrl}` }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+
     const githubPat = Deno.env.get('GITHUB_PAT')
     const githubRepo = Deno.env.get('GITHUB_REPO')
     const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY')
@@ -73,7 +113,7 @@ serve(async (req) => {
       .from('scrape_jobs')
       .insert({
         tradeshow_name: showName,
-        urls: urls.split('\n').map(s => s.trim()).filter(Boolean),
+        urls: urlList,
         status: 'pending',
         options: {
           use_llm: body.use_llm === 'true',

@@ -164,11 +164,33 @@ ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scrape_jobs    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles  ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Auth access — leads" ON leads;
 CREATE POLICY "Auth access — leads"          ON leads          FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Auth access — tradeshows" ON tradeshows;
 CREATE POLICY "Auth access — tradeshows"     ON tradeshows     FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Auth access — lead_activities" ON lead_activities;
 CREATE POLICY "Auth access — lead_activities" ON lead_activities FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Auth access — scrape_jobs" ON scrape_jobs;
 CREATE POLICY "Auth access — scrape_jobs"    ON scrape_jobs    FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Auth access — user_profiles"  ON user_profiles  FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- user_profiles holds the `role` column that gates admin access (see admin-users
+-- edge function), so it can't use the same blanket "any authenticated user can
+-- write anything" policy as the other tables — that let any signed-in user run
+-- `UPDATE user_profiles SET role='admin' WHERE id=<self>` directly against
+-- PostgREST and self-promote to admin.
+DROP POLICY IF EXISTS "Auth access — user_profiles" ON user_profiles;
+CREATE POLICY "Profiles readable by authenticated users" ON user_profiles
+  FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Users update own profile" ON user_profiles
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+-- No INSERT/DELETE policy for authenticated/anon: rows are created only by the
+-- handle_new_user() trigger and deleted only by the admin-users edge function,
+-- both of which run with elevated privileges that bypass RLS.
+
+-- Belt-and-suspenders: even a user updating their own row (allowed above for
+-- editing their email) can never write the role column — only migrations
+-- and the service-role key (which bypasses column grants like RLS) can.
+REVOKE UPDATE (role) ON user_profiles FROM authenticated, anon;
 
 -- ── Migration: add contact_title to existing database ──────────
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS contact_title TEXT;

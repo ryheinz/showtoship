@@ -106,6 +106,60 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS company_name_key TEXT
   GENERATED ALWAYS AS (lower(trim(company_name))) STORED;
 
+-- Databases that already had case/whitespace-variant duplicates (e.g. "Solé"
+-- scraped twice with different trailing whitespace for the same show) will
+-- collide once normalized and block the unique index below. Merge those
+-- duplicates first so this script stays safe to re-run against a live,
+-- already-populated database: keep the "most complete" row per group, fold in
+-- any contact/company fields it's missing from the others, concatenate notes,
+-- then drop the losers. status/priority/assigned_to are NOT smart-merged —
+-- the winner keeps whatever it already had.
+DO $$
+DECLARE
+  grp RECORD;
+  winner_id UUID;
+BEGIN
+  FOR grp IN
+    SELECT lower(trim(company_name)) AS key, tradeshow_id
+    FROM leads
+    GROUP BY lower(trim(company_name)), tradeshow_id
+    HAVING count(*) > 1
+  LOOP
+    SELECT id INTO winner_id
+    FROM leads
+    WHERE lower(trim(company_name)) = grp.key AND tradeshow_id IS NOT DISTINCT FROM grp.tradeshow_id
+    ORDER BY (
+      (email IS NOT NULL)::int + (phone IS NOT NULL)::int + (contact_name IS NOT NULL)::int +
+      (contact_title IS NOT NULL)::int + (linkedin_url IS NOT NULL)::int + (description IS NOT NULL)::int +
+      (products IS NOT NULL)::int + (booth_number IS NOT NULL)::int + (hall IS NOT NULL)::int
+    ) DESC, created_at ASC
+    LIMIT 1;
+
+    UPDATE leads w SET
+      email          = COALESCE(w.email, l.email),
+      phone          = COALESCE(w.phone, l.phone),
+      contact_name   = COALESCE(w.contact_name, l.contact_name),
+      contact_title  = COALESCE(w.contact_title, l.contact_title),
+      linkedin_url   = COALESCE(w.linkedin_url, l.linkedin_url),
+      description    = COALESCE(w.description, l.description),
+      products       = COALESCE(w.products, l.products),
+      booth_number   = COALESCE(w.booth_number, l.booth_number),
+      hall           = COALESCE(w.hall, l.hall),
+      website        = COALESCE(w.website, l.website),
+      notes          = NULLIF(trim(both E'\n' from concat_ws(E'\n', w.notes, l.notes)), '')
+    FROM leads l
+    WHERE w.id = winner_id
+      AND lower(trim(l.company_name)) = grp.key
+      AND l.tradeshow_id IS NOT DISTINCT FROM grp.tradeshow_id
+      AND l.id <> winner_id;
+
+    DELETE FROM leads
+    WHERE lower(trim(company_name)) = grp.key
+      AND tradeshow_id IS NOT DISTINCT FROM grp.tradeshow_id
+      AND id <> winner_id;
+  END LOOP;
+END $$;
+
 DROP INDEX IF EXISTS idx_leads_company_show;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_show ON leads(company_name_key, tradeshow_id);
 

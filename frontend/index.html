@@ -272,6 +272,8 @@ a.ext-link:hover{text-decoration:underline}
   .page{padding:16px}
   .table-toolbar{flex-direction:column;align-items:stretch}
   .search-box{min-width:0}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table-scroll table{min-width:640px}
 }
 @media(max-width:480px){
   .topbar-right .btn-sm,.topbar-right .btn-outline{display:none}
@@ -540,12 +542,14 @@ a.ext-link:hover{text-decoration:underline}
         <button class="btn-outline" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
       <div class="letter-bar" id="letter-bar"></div>
-      <table>
-        <thead><tr id="leads-table-header"></tr></thead>
-        <tbody id="leads-table-body">
-          <tr><td colspan="99" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr id="leads-table-header"></tr></thead>
+          <tbody id="leads-table-body">
+            <tr><td colspan="99" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 0;font-size:12px;color:var(--muted)">
       <div>
@@ -1240,6 +1244,7 @@ async function testSupabase() {
 let allLeads = [];
 let allShows = [];
 let editShowId = null;
+let leadsLoadError = false;
 
 async function loadAllData() {
   selected.clear();
@@ -1251,9 +1256,11 @@ async function loadLeadsData() {
   const pageSize = 1000;
   let all = [];
   let offset = 0;
+  leadsLoadError = false;
   while (true) {
     const data = await sbFetch(`leads?select=*&order=created_at.desc&limit=${pageSize}&offset=${offset}`);
-    if (!data || !data.length) break;
+    if (data === null) { leadsLoadError = true; break; }
+    if (!data.length) break;
     all = all.concat(data);
     if (data.length < pageSize) break;
     offset += pageSize;
@@ -1743,9 +1750,6 @@ function findDuplicates() {
 
 function filterLeadsTable(resetPage) {
   if (resetPage) pageNum = 1;
-  selected.clear();
-  const selAll = document.getElementById('select-all');
-  if (selAll) selAll.checked = false;
   let filtered = getFilteredLeads();
   const total = filtered.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -1753,6 +1757,11 @@ function filterLeadsTable(resetPage) {
   const start = (pageNum - 1) * pageSize;
   const page = filtered.slice(start, start + pageSize);
   renderLeadsTable(page);
+  // Selection persists across pagination/filtering (bulk actions can span pages);
+  // reflect it on the header checkbox for whatever's currently visible.
+  const selAll = document.getElementById('select-all');
+  if (selAll) selAll.checked = page.length > 0 && page.every(l => selected.has(l.id));
+  updateBulkButtons();
   document.getElementById('leads-subtitle').textContent =
     `${total} leads · Page ${pageNum} of ${pages}`;
   document.getElementById('page-info').textContent =
@@ -1784,7 +1793,15 @@ function renderLeadsTable(leads) {
   renderLeadsHeader()
   const tbody = document.getElementById('leads-table-body');
   if (!leads.length) {
-    tbody.innerHTML = `<tr><td colspan="${colCount()}" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>`;
+    if (leadsLoadError) {
+      tbody.innerHTML = `<tr><td colspan="${colCount()}" style="text-align:center;padding:40px">
+        <div style="color:var(--red);font-weight:600;margin-bottom:8px">Couldn't load leads</div>
+        <div style="color:var(--dim);font-size:13px;margin-bottom:12px">Check your connection and try again.</div>
+        <button class="btn-sm" onclick="loadAllData().then(()=>filterLeadsTable())">Retry</button>
+      </td></tr>`;
+    } else {
+      tbody.innerHTML = `<tr><td colspan="${colCount()}" style="text-align:center;color:var(--dim);padding:40px">No leads match the filters</td></tr>`;
+    }
     return;
   }
   const visibleCols = ALL_COLS.filter(c => isColVisible(c.key)).map(c => c.key)
@@ -1833,7 +1850,7 @@ function renderLeadsTable(leads) {
       }
     }
     return `<tr data-id="${l.id}">
-      <td><input type="checkbox" style="accent-color:var(--accent)" onchange="handleSelect(this,'${l.id}')"></td>
+      <td><input type="checkbox" style="accent-color:var(--accent)" ${selected.has(l.id) ? 'checked' : ''} onchange="handleSelect(this,'${l.id}')"></td>
       ${cells}
       <td><button class="action-btn" onclick="openLeadPanel('${l.id}')">Edit</button></td>
     </tr>`
@@ -2256,6 +2273,38 @@ function openImportModal() {
   openModal('import-modal');
 }
 
+// Parses CSV text into rows of fields, honoring RFC 4180 quoting so quoted
+// fields can contain commas, escaped quotes ("") and embedded newlines.
+function parseCSVRows(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\r') {
+      // skip; paired '\n' (if any) ends the row below
+    } else if (c === '\n') {
+      row.push(field); rows.push(row); row = []; field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => !(r.length === 1 && r[0].trim() === ''));
+}
+
 let importRows = [];
 function handleImportFile(input) {
   const file = input.files[0];
@@ -2264,13 +2313,12 @@ function handleImportFile(input) {
   const reader = new FileReader();
   reader.onload = ev => {
     const text = ev.target.result;
-    const lines = text.split('\n');
-    if (lines.length < 2) { document.getElementById('import-status').textContent = 'CSV must have a header row'; return; }
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').replace(/\s+/g,' '));
-    importRows = lines.slice(1).filter(l => l.trim()).map(line => {
-      const vals = line.split(',');
+    const rows = parseCSVRows(text);
+    if (rows.length < 2) { document.getElementById('import-status').textContent = 'CSV must have a header row'; return; }
+    const headers = rows[0].map(h => h.trim().replace(/\s+/g,' '));
+    importRows = rows.slice(1).map(vals => {
       const obj = {};
-      headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+      headers.forEach((h,i) => { obj[h] = (vals[i]||'').trim(); });
       return obj;
     });
     const mapping = {
@@ -2363,12 +2411,11 @@ function handleCSVUpload(input) {
 }
 
 function parseCSV(text) {
-  const lines = text.split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase().replace(/\s+/g,'_'));
-  return lines.slice(1).filter(l => l.trim()).map(line => {
-    const vals = line.split(',');
+  const rows = parseCSVRows(text);
+  const headers = (rows[0]||[]).map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+  return rows.slice(1).map(vals => {
     const obj = {};
-    headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+    headers.forEach((h,i) => { obj[h] = (vals[i]||'').trim(); });
     // Map Sales Navigator columns to our schema
     return {
       company_name:   obj.company || obj.company_name || '',

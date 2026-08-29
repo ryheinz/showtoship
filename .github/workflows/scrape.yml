@@ -71,10 +71,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Write URLs file
-        run: |
-          cat > /tmp/urls.txt << 'EOF'
-          ${{ github.event.inputs.urls }}
-          EOF
+        env:
+          # Passed via env, never interpolated into the script body — a URL
+          # containing a shell metacharacter or an "EOF" line would otherwise
+          # execute as shell in a job that holds the Supabase secrets.
+          URLS: ${{ github.event.inputs.urls }}
+        run: printenv URLS > /tmp/urls.txt
 
       - name: Install Ollama (for LLM extraction)
         if: ${{ github.event.inputs.use_llm == 'true' }}
@@ -98,30 +100,64 @@ jobs:
           SHOW_NAME:         ${{ github.event.inputs.show_name }}
           JOB_ID:            ${{ github.event.inputs.job_id || '' }}
           GITHUB_RUN_ID:     ${{ github.run_id }}
+          USE_LLM:           ${{ github.event.inputs.use_llm }}
+          DEEP_SCRAPE:       ${{ github.event.inputs.deep_scrape }}
+          FIND_EMAILS:       ${{ github.event.inputs.find_emails }}
+          LINKEDIN_ENRICH:   ${{ github.event.inputs.linkedin_enrich }}
         run: |
-          SAFE=$(echo "${SHOW_NAME}" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+          set -euo pipefail
+
+          # SAFE is used ONLY for filenames. The show name passed to the
+          # pipeline must be the real one, or db_writer creates a second
+          # tradeshow row and the leads never join to the show the UI knows.
+          SAFE=$(printf '%s' "${SHOW_NAME}" | tr ' ' '_' | tr -cd '[:alnum:]_-')
+          [ -n "$SAFE" ] || SAFE="show"
           OUTPUT="${SAFE}_$(date +%Y%m%d_%H%M).xlsx"
 
-          ARGS="--urls /tmp/urls.txt --out /tmp/${OUTPUT} --show-name ${SAFE}"
+          ARGS=(--urls /tmp/urls.txt --out "/tmp/${OUTPUT}" --show-name "${SHOW_NAME}")
 
-          [ "${{ github.event.inputs.use_llm }}" = "true" ] && ARGS="$ARGS --llm"
-          [ "${{ github.event.inputs.use_llm }}" = "true" ] && [ -z "${OPENAI_API_KEY}" ] && export LLM_PROVIDER="ollama/llama3"
-          [ "${{ github.event.inputs.deep_scrape }}"  = "true" ] && ARGS="$ARGS --deep"
-          [ "${{ github.event.inputs.find_emails }}"  = "true" ] && ARGS="$ARGS --emails"
-          [ "${{ github.event.inputs.linkedin_enrich }}" = "true" ] && ARGS="$ARGS --linkedin"
+          # Plain `[ .. ] && ..` would return non-zero when a toggle is off and
+          # `set -e` would abort the step, so every branch is a full `if`.
+          if [ "$USE_LLM" = "true" ]; then
+            ARGS+=(--llm)
+            if [ -z "${OPENAI_API_KEY:-}" ]; then export LLM_PROVIDER="ollama/llama3"; fi
+          fi
+          if [ "$DEEP_SCRAPE"     = "true" ]; then ARGS+=(--deep);     fi
+          if [ "$FIND_EMAILS"     = "true" ]; then ARGS+=(--emails);   fi
+          if [ "$LINKEDIN_ENRICH" = "true" ]; then ARGS+=(--linkedin); fi
+          if [ -n "$JOB_ID" ];                then ARGS+=(--job-id "$JOB_ID"); fi
 
-          [ -n "$JOB_ID" ] && ARGS="$ARGS --job-id $JOB_ID"
-          python scraper/run_pipeline.py $ARGS
+          python scraper/run_pipeline.py "${ARGS[@]}"
 
           echo "OUTPUT_FILE=${OUTPUT}" >> $GITHUB_ENV
           echo "SAFE_NAME=${SAFE}"    >> $GITHUB_ENV
 
+      # Without this, a job that dies before Python runs (a pip failure, a
+      # runner timeout) leaves the scrape_jobs row on "pending" forever and the
+      # UI can only report a timeout it cannot explain.
+      - name: Mark scrape job failed
+        if: ${{ failure() && github.event.inputs.job_id != '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          JOB_ID:       ${{ github.event.inputs.job_id }}
+          RUN_URL:      ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -sS -X PATCH \
+            "${SUPABASE_URL}/rest/v1/scrape_jobs?id=eq.${JOB_ID}" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\":\"failed\",\"error\":\"Workflow failed — see ${RUN_URL}\",\"completed_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+
       - name: Upload Excel artifact
+        if: ${{ env.OUTPUT_FILE != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SAFE_NAME }}-leads
           path: /tmp/${{ env.OUTPUT_FILE }}
           retention-days: 90
+          if-no-files-found: warn
 
       - name: Create GitHub Release with Excel
         if: ${{ github.event.inputs.create_release == 'true' }}

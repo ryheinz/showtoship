@@ -171,9 +171,7 @@ async def _scrape_mapyourshow(url: str) -> list[dict]:
                         exhibitor = data.get("DATA", {}).get("results", {}).get("exhibitor", {})
                         hits = exhibitor.get("hit", [])
                         if hits:
-                            before = len(all_hits)
                             all_hits.extend(hits)
-                            print(f"  → {len(hits)} exhibitors (total: {len(all_hits)})")
                 except Exception:
                     pass
 
@@ -190,17 +188,25 @@ async def _scrape_mapyourshow(url: str) -> list[dict]:
         for letter in letters:
             link = await page.query_selector(f'a[href*="alpha/{letter}"], a[href*="alpha/%{letter}"]')
             if not link:
-                print(f"  ✗ Letter '{letter}' not found")
                 continue
 
+            label = "Show All" if letter == "*" else letter
+            before = len(all_hits)
             await link.click()
-            await page.wait_for_timeout(2000)
 
-            if letter == "*":
-                label = "Show All"
-            else:
-                label = letter
-            print(f"  → Clicked '{label}'")
+            # Wait for the search response this click triggers. The old fixed
+            # 2s wait dropped every letter whose API call took longer, which is
+            # a large part of why the roster came back incomplete.
+            for _ in range(30):                      # up to ~15s
+                await page.wait_for_timeout(500)
+                if len(all_hits) > before:
+                    # Keep waiting while results are still streaming in.
+                    settled = len(all_hits)
+                    await page.wait_for_timeout(800)
+                    if len(all_hits) == settled:
+                        break
+            gained = len(all_hits) - before
+            print(f"  → '{label}': +{gained} (total {len(all_hits)})")
 
         if not all_hits:
             print("  → API capture yielded no results, extracting from DOM...")
@@ -289,7 +295,10 @@ async def _scrape_a2z(url: str) -> list[dict]:
         await page.goto(url, wait_until="networkidle", timeout=60000)
         await page.wait_for_timeout(2000)
 
-        while True:
+        seen_signatures = set()
+        MAX_PAGES = 200          # guard: a pager stuck on "enabled" looped forever
+
+        while page_num < MAX_PAGES:
             page_num += 1
             entries = await page.evaluate("""
                 () => {
@@ -317,6 +326,15 @@ async def _scrape_a2z(url: str) -> list[dict]:
                     return results;
                 }
             """)
+            # An ASP.NET postback slower than the old fixed 4s wait meant the
+            # same page was read twice and the next one was never seen. Detect
+            # a repeat instead of trusting a timer.
+            signature = "|".join(e.get("company_name", "") for e in entries[:20])
+            if signature and signature in seen_signatures:
+                print(f"  ! Page {page_num} repeated the previous page — stopping")
+                break
+            seen_signatures.add(signature)
+
             print(f"  → Page {page_num}: {len(entries)} exhibitors")
             results.extend(entries)
 
@@ -360,7 +378,29 @@ async def _scrape_a2z(url: str) -> list[dict]:
                 print(f"  ✗ Could not click next page")
                 break
 
-            await page.wait_for_timeout(4000)
+            # Poll for the table to actually change rather than sleeping a fixed
+            # interval; a slow postback used to be scraped as a duplicate page.
+            previous = signature
+            changed = False
+            for _ in range(30):                     # up to ~15s
+                await page.wait_for_timeout(500)
+                current = await page.evaluate("""
+                    () => {
+                        const t = document.querySelector('table.table-striped.table-hover');
+                        if (!t) return '';
+                        return [...t.querySelectorAll('a.exhibitorName')]
+                            .slice(0, 20).map(a => a.textContent.trim()).join('|');
+                    }
+                """)
+                if current and current != previous:
+                    changed = True
+                    break
+            if not changed:
+                print(f"  ! Page {page_num + 1} never loaded — stopping")
+                break
+
+        if page_num >= MAX_PAGES:
+            print(f"  ⚠ Hit the {MAX_PAGES}-page safety limit")
 
         await browser.close()
 

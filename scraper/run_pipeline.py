@@ -39,6 +39,10 @@ async def main():
     p.add_argument("--emails",    action="store_true")
     p.add_argument("--linkedin",  action="store_true")
     p.add_argument("--job-id", dest="job_id", default=None)
+    p.add_argument("--max-list-pages", dest="max_list_pages", type=int, default=100,
+                   help="Safety cap on pages of a paginated exhibitor list (default 100)")
+    p.add_argument("--max-detail-pages", dest="max_detail_pages", type=int, default=0,
+                   help="Cap on --deep profile fetches; 0 (default) means no cap")
     args = p.parse_args()
 
     urls = [l.strip() for l in Path(args.urls).read_text().splitlines()
@@ -69,7 +73,9 @@ async def main():
     try:
         # ── Phase 1 + 2: scrape exhibitor data ─────────────────────────────
         print("📋  Phase 1/2 — Scraping exhibitor data…")
-        scraper = ExhibitorScraper(use_llm=args.llm, deep=args.deep)
+        scraper = ExhibitorScraper(use_llm=args.llm, deep=args.deep,
+                                   max_detail_pages=args.max_detail_pages,
+                                   max_list_pages=args.max_list_pages)
         rows = await scraper.run(urls)
         print(f"   → {len(rows)} exhibitors scraped\n")
 

@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Model ids live here so the edge function and the frontend can be updated
+// together; both were pinned to 2024-era models.
+const ANTHROPIC_MODEL = 'claude-haiku-4-5'
+const OPENAI_MODEL = 'gpt-4o-mini'
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -50,9 +55,13 @@ serve(async (req) => {
       })
     }
 
-    const aiProvider = provider || 'openai'
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+
+    // Fall back to whichever key is actually configured. The client used to
+    // hardcode 'openai', so a deployment holding only ANTHROPIC_API_KEY
+    // reported "AI not configured" no matter what.
+    const aiProvider = provider || (openaiKey ? 'openai' : anthropicKey ? 'anthropic' : 'openai')
 
     if (aiProvider === 'openai' && !openaiKey) {
       return new Response(JSON.stringify({ error: 'AI not configured — ask your admin to add OPENAI_API_KEY secret' }), {
@@ -89,16 +98,51 @@ serve(async (req) => {
       }
     }
 
-    const { data: recentLeads } = await adminClient
+    // Aggregates come from COUNT queries over the whole table. Feeding the
+    // model 30 arbitrary rows and calling them "the user's leads" made it
+    // answer "how many leads from Germany?" with a confident wrong number.
+    const countWhere = async (apply: (q: any) => any) => {
+      const { count } = await apply(
+        adminClient.from('leads').select('id', { count: 'exact', head: true }))
+      return count ?? 0
+    }
+
+    const STATUSES = ['new', 'contacted', 'qualified', 'disqualified', 'opportunity', 'closed']
+    const [totalLeads, withEmail, withContact, statusCounts, showRows] = await Promise.all([
+      countWhere((q: any) => q),
+      countWhere((q: any) => q.not('email', 'is', null)),
+      countWhere((q: any) => q.not('contact_name', 'is', null)),
+      Promise.all(STATUSES.map(async s => [s, await countWhere((q: any) => q.eq('status', s))] as const)),
+      adminClient.from('leads').select('tradeshow_name').not('tradeshow_name', 'is', null),
+    ])
+
+    const byShow: Record<string, number> = {}
+    for (const r of (showRows.data ?? [])) {
+      const k = (r as { tradeshow_name: string }).tradeshow_name
+      byShow[k] = (byShow[k] || 0) + 1
+    }
+    const topShows = Object.entries(byShow).sort((a, b) => b[1] - a[1]).slice(0, 25)
+
+    // A sample is still useful for texture — but label it honestly as a sample.
+    const { data: sampleLeads } = await adminClient
       .from('leads')
-      .select('company_name, country, industry, category, products, status, email, contact_name, contact_title, website, linkedin_url')
+      .select('company_name, country, industry, category, status, email, contact_name, contact_title')
+      .order('created_at', { ascending: false })
       .limit(30)
 
-    const leadsSummary = recentLeads && recentLeads.length > 0
-      ? recentLeads.map(l =>
-          `${l.company_name} | ${l.country || '?'} | ${l.industry || l.category || '?'} | ${l.status} | ${l.contact_name || ''}${l.contact_title ? ' ('+l.contact_title+')' : ''} | ${l.email || ''}`
-        ).join('\n')
-      : 'No leads found yet'
+    const leadsSummary = totalLeads === 0 ? 'No leads in the database yet' : [
+      `Totals across the WHOLE database (authoritative — use these for any count):`,
+      `- Total leads: ${totalLeads}`,
+      `- With an email address: ${withEmail}`,
+      `- With a named contact: ${withContact}`,
+      `- By status: ${statusCounts.map(([s, n]) => `${s}=${n}`).join(', ')}`,
+      `- Leads per show: ${topShows.map(([s, n]) => `${s}=${n}`).join(', ') || 'none assigned'}`,
+      ``,
+      `A SAMPLE of the 30 most recent leads (NOT the full list — never count these):`,
+      (sampleLeads ?? []).map(l =>
+        `${l.company_name} | ${l.country || '?'} | ${l.industry || l.category || '?'} | ${l.status} | ${l.contact_name || ''}${l.contact_title ? ' ('+l.contact_title+')' : ''} | ${l.email || ''}`
+      ).join('\n'),
+    ].join('\n')
 
     const needContacts = /find.*(contact|person|people|ceo|founder|director)|who.*(ceo|founder|runs|leads)/i.test(message)
     let webSearchResults = ''
@@ -144,6 +188,11 @@ ${webSearchResults ? `\n${webSearchResults}\n` : ''}
 
 Rules:
 - Answer naturally and conversationally
+- For ANY question involving a count or total, use the authoritative totals above.
+  Never count the rows in the sample — it is 30 of ${totalLeads} leads.
+- If a question needs a breakdown that is not in the totals above (e.g. leads per
+  country), say you cannot compute it from the data provided rather than guessing
+  from the sample.
 - When asked about a company, share what's in the database and suggest next steps
 - When asked to find contacts/people, check the database first, then suggest web search results
 - If you don't know something, say so — don't make up data
@@ -169,7 +218,7 @@ Rules:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: ANTHROPIC_MODEL,
           max_tokens: 800,
           system: systemMsg?.content || '',
           messages: userMsgs,
@@ -191,7 +240,7 @@ Rules:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: OPENAI_MODEL,
           messages,
           temperature: 0.3,
           max_tokens: 800,

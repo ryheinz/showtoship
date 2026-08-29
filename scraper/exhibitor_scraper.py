@@ -1,9 +1,13 @@
 """
 exhibitor_scraper.py — Scrape EXHIBITOR lists from tradeshow websites
 -----------------------------------------------------------------------
-Two-phase approach:
-  Phase 1 — scrape the exhibitor LIST page (company names, booths, links)
-  Phase 2 — follow each exhibitor's detail link for deeper info (optional)
+Phase 1 — collect the exhibitor LIST, following pagination to the end
+Phase 2 — follow each exhibitor's detail link for deeper info (optional)
+
+The work is split across three modules:
+  list_crawler.py  — walks every page of a listing (pagination, load-more)
+  extractors.py    — picks the best container selector and pulls fields
+  llm_extract.py   — model-based extraction for pages selectors can't read
 
 Usage:
     python exhibitor_scraper.py --url "https://example-show.com/exhibitors"
@@ -11,7 +15,7 @@ Usage:
     python exhibitor_scraper.py --urls urls.txt --out my_exhibitors.xlsx
 
 Requirements:
-    pip install crawl4ai openpyxl playwright
+    pip install playwright beautifulsoup4 lxml openpyxl aiohttp
     playwright install chromium
 """
 
@@ -23,155 +27,16 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig
-from crawl4ai.extraction_strategy import LLMExtractionStrategy, JsonCssExtractionStrategy
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+from urllib.parse import urljoin
+
 from site_configs import get_config_for_domain
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  STEP 1 — INSPECT YOUR TARGET PAGE
-#  Before running, open the exhibitor list page in Chrome and press F12.
-#  In the Elements tab, right-click on one exhibitor card → "Copy selector".
-#  Paste it into EXHIBITOR_SCHEMA["baseSelector"] below.
-# ══════════════════════════════════════════════════════════════════════════════
-
-EXHIBITOR_SCHEMA = {
-    "name": "ExhibitorList",
-
-    # ── baseSelector: the repeating container for ONE exhibitor entry ──────
-    # Common patterns (update this for your specific site):
-    #   ".exhibitor-item"      most custom show sites
-    #   "tr.exhibitor-row"     table-based lists
-    #   ".company-card"        card grid layouts
-    #   "li.exhibitor"         simple list layouts
-    #   "[data-exhibitor]"     data-attribute based
-    "baseSelector": (
-        ".exhibitor-item, .company-card, .exhibitor-card, "
-        "tr.exhibitor-row, li.exhibitor, [data-exhibitor], "
-        ".booth-item, .participant-item, .vendor-item, "
-        "table tbody tr, table tr"
-    ),
-
-    "fields": [
-        # Company name — try common title selectors
-        {
-            "name": "company_name",
-            "selector": "h2, h3, h4, .company-name, .exhibitor-name, .name, .title, strong, td:first-child, td:nth-child(1)",
-            "type": "text"
-        },
-        # Booth / stand number
-        {
-            "name": "booth_number",
-            "selector": ".booth, .booth-number, .stand, .hall-booth, [data-booth], .booth-no",
-            "type": "text"
-        },
-        # Hall / pavilion
-        {
-            "name": "hall",
-            "selector": ".hall, .pavilion, .hall-name, [data-hall]",
-            "type": "text"
-        },
-        # Country / nationality
-        {
-            "name": "country",
-            "selector": ".country, .nation, .flag-label, [data-country], td:nth-child(2)",
-            "type": "text"
-        },
-        # Product category / sector
-        {
-            "name": "category",
-            "selector": ".category, .sector, .industry, .product-group, .tags, .tag",
-            "type": "text"
-        },
-        # Products / services offered
-        {
-            "name": "products",
-            "selector": ".products, .product-list, .product-group, .services, [data-products], td:nth-child(4)",
-            "type": "text"
-        },
-        # Short description / profile text
-        {
-            "name": "description",
-            "selector": "p, .description, .profile, .about, .excerpt, .summary",
-            "type": "text"
-        },
-        # Website (from href attribute)
-        {
-            "name": "website",
-            "selector": "a.website, a.company-link, a[href*='http']:not([href*='exhibitor']), td:nth-child(3) a",
-            "type": "attribute",
-            "attribute": "href"
-        },
-        # Exhibitor detail page link (for Phase 2 deep scrape)
-        {
-            "name": "detail_url",
-            "selector": "a.exhibitor-link, a.more, a[href*='exhibitor'], a[href*='company'], a[href*='booth']",
-            "type": "attribute",
-            "attribute": "href"
-        },
-    ]
-}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  LLM PROMPT — used when CSS selectors don't match your page structure
-#  (pass --llm flag to activate)
-# ══════════════════════════════════════════════════════════════════════════════
-
-EXHIBITOR_LLM_PROMPT = """
-You are extracting exhibitor/company data from a trade show or exhibition website.
-
-Extract EVERY company or exhibitor listed on this page.
-Return a JSON array where each object has these fields (use null if not found):
-
-- company_name: full official company name
-- booth_number: booth or stand number/code (e.g. "A12", "Hall 3 Stand 45")
-- hall: hall or pavilion name/number
-- country: country of origin
-- category: product category, industry sector, or tags
-- description: company profile or product description (max 3 sentences)
-- website: company website URL
-- detail_url: URL to the exhibitor's profile page on this site
-- email: contact email if shown
-- phone: contact phone if shown
-- products: main products or services listed
-
-Return ONLY a valid JSON array. No markdown, no prose.
-"""
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  DETAIL PAGE PROMPT — Phase 2 deep scrape of individual exhibitor profiles
-# ══════════════════════════════════════════════════════════════════════════════
-
-DETAIL_PAGE_PROMPT = """
-Extract detailed exhibitor/company information from this profile page.
-Return a single JSON object with:
-
-- company_name
-- booth_number
-- hall
-- country
-- city
-- address
-- website
-- email
-- phone
-- contact_person
-- category / products
-- description (full profile text, max 5 sentences)
-- social_linkedin
-- social_twitter
-- year_founded
-- employee_count
-- brands (list any brand names mentioned)
-
-Return ONLY a valid JSON object. No prose.
-"""
+from list_crawler import ListCrawler
+from extractors import extract_from_pages, extract_detail_page, dedupe
+from llm_extract import extract_exhibitors
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -181,11 +46,16 @@ Return ONLY a valid JSON object. No prose.
 class ExhibitorScraper:
 
     def __init__(self, use_llm: bool = False, deep: bool = False,
-                 llm_provider: str = "", max_detail_pages: int = 50):
+                 llm_provider: str = "", max_detail_pages: int = 0,
+                 max_list_pages: int = 100):
         self.use_llm = use_llm
         self.deep = deep
         self.llm_provider = llm_provider or os.environ.get("LLM_PROVIDER", self._default_provider())
-        self.max_detail_pages = max_detail_pages
+        # 0 means "no cap". The old default of 50 silently deep-scraped only the
+        # first 50 exhibitors of a show — 4% of a 1,200-exhibitor directory —
+        # with nothing in the output to say the rest had been skipped.
+        self.max_detail_pages = max_detail_pages or int(os.environ.get("MAX_DETAIL_PAGES", "0"))
+        self.max_list_pages = max_list_pages
         self.results: list[dict] = []
 
     @staticmethod
@@ -194,219 +64,96 @@ class ExhibitorScraper:
             return "openai/gpt-4o-mini"
         return "ollama/llama3"
 
-    # ── browser config (shared) ──────────────────────────────────────────────
-
-    def _browser_cfg(self) -> BrowserConfig:
-        return BrowserConfig(
-            headless=True,
-            verbose=False,
-            extra_args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
-        )
-
-    # ── extraction strategy ──────────────────────────────────────────────────
-
-    def _list_strategy(self):
-        if self.use_llm:
-            return LLMExtractionStrategy(
-                llm_config=LLMConfig(provider=self.llm_provider),
-                instruction=EXHIBITOR_LLM_PROMPT,
-                extraction_type="block",
-            )
-        return JsonCssExtractionStrategy(EXHIBITOR_SCHEMA, verbose=True)
-
-    def _detail_strategy(self):
-        return LLMExtractionStrategy(
-            llm_config=LLMConfig(provider=self.llm_provider),
-            instruction=DETAIL_PAGE_PROMPT,
-            extraction_type="block",
-        )
 
     # ── Phase 1: scrape exhibitor list ───────────────────────────────────────
 
     async def scrape_list_page(self, url: str) -> list[dict]:
         """
-        Scrapes the exhibitor listing/directory page.
-        Checks site_configs.py first for API-based scraping (most reliable),
-        then falls back to crawl4ai + LLM extraction.
+        Scrape an exhibitor directory, following pagination to the end.
+
+        Order of preference:
+          1. A site-specific config (an internal API is always the best source)
+          2. Generic multi-page collection + CSS extraction
+          3. LLM extraction over the collected text, when --llm is on
         """
         domain_config = get_config_for_domain(url)
         if domain_config:
             if domain_config.get("type") == "api":
                 rows = await self._scrape_via_api(url, domain_config["api_config"])
                 if rows:
-                    print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
-                    return rows
+                    return self._finalise(rows, url)
+                print("  ! Site API returned nothing — falling back to the generic crawler")
             elif domain_config.get("type") == "playwright":
                 from site_configs import get_playwright_scraper
                 scraper_fn = get_playwright_scraper(domain_config.get("playwright_scraper"))
                 if scraper_fn:
                     rows = await scraper_fn(url)
                     if rows:
-                        return rows
+                        return self._finalise(rows, url)
+                    print("  ! Site scraper returned nothing — falling back to the generic crawler")
 
-        rows = []
-        async with AsyncWebCrawler(config=self._browser_cfg()) as crawler:
-            result = await crawler.arun(
-                url=url,
-                config=CrawlerRunConfig(
-                    cache_mode=CacheMode.BYPASS,
-                    extraction_strategy=self._list_strategy(),
-                    wait_for="body",
-                    page_timeout=60000,
-                    remove_overlay_elements=True,
-                    excluded_tags=["nav", "footer", "script", "style"],
-                    js_code="""
-                        const scroll = async () => {
-                            for (let i = 0; i < 10; i++) {
-                                window.scrollTo(0, document.body.scrollHeight);
-                                await new Promise(r => setTimeout(r, 1500));
-                            }
-                            await new Promise(r => setTimeout(r, 5000));
-                        };
-                        await scroll();
-                    """,
-                    wait_for_images=False,
-                ),
-            )
-
-        if not result.success:
-            print(f"  ✗ Failed to load: {url}\n    Error: {result.error_message}")
+        # ── Collect every page of the listing ────────────────────────────
+        crawler = ListCrawler(max_pages=self.max_list_pages, verbose=True)
+        pages_html = await crawler.collect(url)
+        if not pages_html:
+            print(f"  ✗ Could not load {url}")
             return []
 
-        if result.extracted_content:
-            try:
-                data = json.loads(result.extracted_content)
-                rows = data if isinstance(data, list) else [data]
-            except json.JSONDecodeError:
-                pass
+        # ── CSS extraction across all collected pages ────────────────────
+        rows, selector = extract_from_pages(pages_html, url)
+        if rows:
+            print(f"  ✓ Extracted {len(rows)} exhibitors using selector: {selector}")
 
-        if not rows or all(not r.get("company_name") for r in rows):
-            print(f"  ℹ Standard extraction gave {len(rows)} rows without company data — trying full-page LLM…")
-            rows = await self._scrape_with_llm_fallback(url)
+        # ── LLM fallback, when the selectors found little or nothing ─────
+        # A directory page that yields under 5 rows is almost always a miss,
+        # not a genuinely tiny show.
+        if len(rows) < 5 and self.use_llm:
+            print(f"  ℹ CSS extraction found {len(rows)} rows — trying the LLM…")
+            llm_rows = await self._llm_rows_from_pages(pages_html)
+            if len(llm_rows) > len(rows):
+                print(f"  ✓ LLM extraction found {len(llm_rows)} exhibitors")
+                rows = llm_rows
 
-        base = url.rstrip("/").rsplit("/", 1)[0]
+        if not rows:
+            print(f"  ✗ No exhibitors extracted from {url}")
+            if not self.use_llm:
+                print("    Try re-running with LLM Extraction enabled, or add a")
+                print("    site config in scraper/site_configs.py for this domain.")
+            return []
+
+        return self._finalise(rows, url)
+
+    def _finalise(self, rows: list[dict], url: str) -> list[dict]:
+        """Normalise URLs and stamp provenance onto every row."""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
         for r in rows:
             r.setdefault("source_url", url)
-            r.setdefault("scraped_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
-            du = r.get("detail_url", "")
-            if du and not du.startswith("http"):
-                r["detail_url"] = base + "/" + du.lstrip("/")
-
-        print(f"  ✓ List page: {len(rows)} exhibitors  ←  {url}")
+            r.setdefault("scraped_at", now)
+            # urljoin handles root-relative paths and query strings correctly;
+            # the old string concatenation mangled both.
+            for field in ("detail_url", "website"):
+                value = (r.get(field) or "").strip()
+                if value and not value.startswith(("http://", "https://")):
+                    r[field] = urljoin(url, value)
+        rows = dedupe(rows)
+        print(f"  ✓ List page total: {len(rows)} exhibitors  ←  {url}")
         return rows
 
-    async def _scrape_with_llm_fallback(self, url: str) -> list[dict]:
-        """Use Playwright to get fully rendered page, then extract via LLM."""
-        if not self.use_llm:
-            return await self._scrape_with_text_fallback(url)
+    async def _llm_rows_from_pages(self, pages_html: list[str]) -> list[dict]:
+        """Strip each collected page to text and run the LLM over it."""
+        from bs4 import BeautifulSoup
 
-        try:
-            from playwright.async_api import async_playwright
+        texts = []
+        for html in pages_html:
+            soup = BeautifulSoup(html, "lxml")
+            for tag in soup(["script", "style", "nav", "footer", "header", "svg"]):
+                tag.decompose()
+            texts.append(soup.get_text("\n"))
 
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(
-                    headless=True,
-                    args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
-                )
-                page = await browser.new_page()
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-
-                for _ in range(10):
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    await page.wait_for_timeout(1500)
-
-                await page.wait_for_load_state("networkidle", timeout=10000)
-                text = await page.evaluate("document.body.innerText")
-                await browser.close()
-
-            import json
-            from crawl4ai.extraction_strategy import LLMExtractionStrategy
-            from crawl4ai import LLMConfig
-
-            strategy = LLMExtractionStrategy(
-                llm_config=LLMConfig(provider=self.llm_provider),
-                instruction=EXHIBITOR_LLM_PROMPT,
-                extraction_type="block",
-            )
-            result = await strategy.extract(text, ignore_llm=True)
-            if result:
-                data = json.loads(result) if isinstance(result, str) else result
-                if isinstance(data, list):
-                    for r in data:
-                        r.setdefault("source", "llm_fallback")
-                    return data
-        except Exception as e:
-            print(f"  ✗ LLM fallback failed: {e}")
-
-        return await self._scrape_with_text_fallback(url)
-
-    async def _scrape_with_text_fallback(self, url: str) -> list[dict]:
-        """Extract company names from raw page text using heuristics."""
-        from playwright.async_api import async_playwright
-
-        rows = []
-        try:
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(
-                    headless=True,
-                    args=["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
-                )
-                page = await browser.new_page()
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-
-                for _ in range(10):
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    await page.wait_for_timeout(1500)
-
-                await page.wait_for_load_state("networkidle", timeout=10000)
-                text = await page.evaluate("document.body.innerText")
-                await browser.close()
-
-                lines = [l.strip() for l in text.split("\n") if l.strip()]
-                company_suffixes = (
-                    "GmbH", "AG", "Inc", "Corp", "Ltd", "& Co", "e.K.", "SE", "LLC",
-                    "LLP", "SA", "S.A.", "BV", "B.V.", "NV", "N.V.", "PLC", "Pty",
-                    "GmbH & Co", "KG", "GbR", "e.V.", "S.L.", "S.p.A.", "SAS",
-                    "SARL", "SRL", "Oy", "AB", "APS", "SpA", "Gmbh",
-                )
-
-                skip_prefixes = (
-                    "http", "www", "tel", "fax", "email", "phone", "address",
-                    "the", "this", "about", "contact", "menu", "home", "search",
-                    "sign", "login", "register", "copyright", "all rights",
-                    "privacy", "terms", "cookie", "follow", "share",
-                )
-
-                # Collect all capitalized lines that look like company names
-                for line in lines:
-                    if len(line) < 3 or line[0].islower():
-                        continue
-                    if line.lower().startswith(skip_prefixes):
-                        continue
-                    # Has a legal suffix
-                    if any(c in line for c in company_suffixes):
-                        rows.append({"company_name": line, "source": "text_fallback_suffix"})
-                        continue
-                    # Starts with uppercase and has 2+ words (likely a company name)
-                    words = line.split()
-                    if len(words) >= 2 and all(w[0].isupper() for w in words if w[0].isalpha()):
-                        rows.append({"company_name": line, "source": "text_fallback_caps"})
-
-                # Deduplicate
-                seen = set()
-                unique = []
-                for r in rows:
-                    n = r.get("company_name", "")
-                    if n and n not in seen:
-                        seen.add(n)
-                        unique.append(r)
-                rows = unique
-                print(f"  ℹ Text fallback found {len(rows)} potential company names")
-
-        except Exception as e:
-            print(f"  ✗ Text fallback failed: {e}")
-
-        return rows
+        rows: list[dict] = []
+        for text in texts:
+            rows.extend(await extract_exhibitors(text))
+        return dedupe(rows)
 
     async def _scrape_via_api(self, url: str, cfg: dict) -> list[dict]:
         """
@@ -508,69 +255,85 @@ class ExhibitorScraper:
         For each exhibitor that has a detail_url, fetches the profile page
         and merges richer data back into the row.
         """
-        to_fetch = [r for r in rows if r.get("detail_url")][:self.max_detail_pages]
+        with_urls = [r for r in rows if r.get("detail_url")]
+        to_fetch = with_urls[:self.max_detail_pages] if self.max_detail_pages else with_urls
         if not to_fetch:
             print("  ℹ No detail URLs found — skipping deep scrape.")
             return rows
 
-        print(f"\n  📄  Deep-scraping {len(to_fetch)} exhibitor profile pages…")
-        semaphore = asyncio.Semaphore(2)  # polite concurrency
+        print(f"\n  📄  Deep-scraping {len(to_fetch)} of {len(with_urls)} exhibitor profile pages…")
+        if len(to_fetch) < len(with_urls):
+            print(f"  ⚠ Capped at {self.max_detail_pages} by MAX_DETAIL_PAGES — "
+                  f"{len(with_urls) - len(to_fetch)} profiles will be skipped.")
+        semaphore = asyncio.Semaphore(3)  # polite concurrency
 
-        async with AsyncWebCrawler(config=self._browser_cfg()) as crawler:
+        # Detail pages are read with Playwright + the same field heuristics as
+        # the list page. The old version always used an LLM strategy regardless
+        # of --llm, so with no API key every profile silently failed.
+        from playwright.async_api import async_playwright
+        from list_crawler import BROWSER_ARGS, USER_AGENT
+
+        done = 0
+        enriched_count = 0
+
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=True, args=BROWSER_ARGS)
+            context = await browser.new_context(user_agent=USER_AGENT)
+
             async def fetch_one(row: dict) -> dict:
+                nonlocal done, enriched_count
                 async with semaphore:
-                    url = row["detail_url"]
-                    run_cfg = CrawlerRunConfig(
-                        cache_mode=CacheMode.BYPASS,
-                        extraction_strategy=self._detail_strategy(),
-                        wait_for="body",
-                        page_timeout=30000,
-                        remove_overlay_elements=True,
-                        excluded_tags=["nav", "footer", "script", "style"],
-                    )
-                    result = await crawler.arun(url=url, config=run_cfg)
-
-                    if result.success and result.extracted_content:
-                        try:
-                            detail = json.loads(result.extracted_content)
-                            if isinstance(detail, list) and detail:
-                                detail = detail[0]
-                            if isinstance(detail, dict):
-                                for k, v in detail.items():
-                                    if v and not row.get(k):
-                                        row[k] = v
-                        except json.JSONDecodeError:
-                            pass
+                    page = await context.new_page()
+                    try:
+                        await page.goto(row["detail_url"], wait_until="domcontentloaded", timeout=30000)
+                        await page.wait_for_timeout(600)
+                        html = await page.content()
+                        detail = extract_detail_page(html, row["detail_url"])
+                        if detail:
+                            enriched_count += 1
+                        for k, v in detail.items():
+                            if v and not row.get(k):
+                                row[k] = v
+                    except Exception as e:
+                        print(f"    ! detail page failed for {row.get('company_name','?')[:40]}: {type(e).__name__}")
+                    finally:
+                        await page.close()
+                        done += 1
+                        if done % 25 == 0 or done == len(to_fetch):
+                            print(f"    [{done}/{len(to_fetch)}] profiles fetched")
                     return row
 
-            tasks = [fetch_one(r) for r in to_fetch]
-            enriched = await asyncio.gather(*tasks, return_exceptions=True)
+            enriched = await asyncio.gather(*[fetch_one(r) for r in to_fetch],
+                                            return_exceptions=True)
+            await browser.close()
 
-        # Merge enriched rows back
-        enriched_map = {r["detail_url"]: r for r in enriched if isinstance(r, dict)}
+        print(f"  ✓ Deep scrape enriched {enriched_count}/{len(to_fetch)} profiles")
+
+        enriched_map = {r["detail_url"]: r for r in enriched
+                        if isinstance(r, dict) and r.get("detail_url")}
         return [enriched_map.get(r.get("detail_url"), r) for r in rows]
 
     # ── Main pipeline ────────────────────────────────────────────────────────
 
     async def run(self, urls: list[str]) -> list[dict]:
         all_rows = []
-        for url in urls:
+        for n, url in enumerate(urls, 1):
+            print(f"\n[{n}/{len(urls)}] {url}")
             rows = await self.scrape_list_page(url)
             if self.deep and rows:
                 rows = await self.scrape_detail_pages(rows)
             all_rows.extend(rows)
+
+        # Shows often list the same exhibitor across several URLs (per-hall
+        # pages, A-Z splits); collapse them rather than writing duplicates.
+        before = len(all_rows)
+        all_rows = dedupe(all_rows)
+        if before != len(all_rows):
+            print(f"\n  ℹ Merged {before - len(all_rows)} duplicate exhibitors across URLs")
+
         self.results = all_rows
         return all_rows
 
-    def _markdown_fallback(self, markdown: str) -> list[dict]:
-        if not markdown:
-            return []
-        rows = []
-        for m in re.finditer(r"(?m)^\*\*(.+?)\*\*|^#{1,3}\s+(.+)$", markdown):
-            name = m.group(1) or m.group(2)
-            if name:
-                rows.append({"company_name": name.strip()})
-        return rows[:200]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -688,6 +451,8 @@ async def main():
     p.add_argument("--llm",    action="store_true", help="Use LLM extraction (needs OPENAI_API_KEY)")
     p.add_argument("--deep",   action="store_true", help="Also scrape individual exhibitor profile pages")
     p.add_argument("--emails", action="store_true", help="Phase 3: hunt for email addresses on the web")
+    p.add_argument("--max-list-pages", dest="max_list_pages", type=int, default=100)
+    p.add_argument("--max-detail-pages", dest="max_detail_pages", type=int, default=0)
     p.add_argument("--out",    default="exhibitors.xlsx")
     p.add_argument("--csv",    action="store_true")
     args = p.parse_args()
@@ -702,7 +467,9 @@ async def main():
         return
 
     print(f"\n🔍  Scraping {len(urls)} URL(s) | LLM={'on' if args.llm else 'off'} | Deep={'on' if args.deep else 'off'} | Emails={'on' if args.emails else 'off'}\n")
-    scraper = ExhibitorScraper(use_llm=args.llm, deep=args.deep)
+    scraper = ExhibitorScraper(use_llm=args.llm, deep=args.deep,
+                               max_detail_pages=args.max_detail_pages,
+                               max_list_pages=args.max_list_pages)
     rows = await scraper.run(urls)
 
     if not rows:

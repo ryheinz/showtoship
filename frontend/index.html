@@ -255,7 +255,10 @@ a.ext-link:hover{text-decoration:underline}
 .auth-box p{font-size:13px;color:var(--muted);margin-bottom:20px}
 .auth-box .field{margin-bottom:14px}
 
-.auth-box .error{color:var(--red);font-size:12px;margin-bottom:10px;display:none}
+.auth-box .error{color:var(--red);font-size:13px;margin-bottom:10px;display:none;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:8px 10px;line-height:1.5}
+.auth-box .notice{color:var(--green);font-size:13px;margin-bottom:10px;display:none;background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:6px;padding:8px 10px;line-height:1.5}
+.auth-link{background:none;border:none;color:var(--accent);font-family:var(--font);font-size:13px;cursor:pointer;padding:10px 0 0;width:100%;text-align:center}
+.auth-link:hover{text-decoration:underline}
 .auth-logo{text-align:center;margin-bottom:20px}
 .auth-logo svg{height:32px;width:auto}
 
@@ -626,10 +629,25 @@ a.ext-link:hover{text-decoration:underline}
         <div class="modal-head"><h3>Add User</h3><button class="modal-close" onclick="closeModal('add-user-modal')">✕</button></div>
         <div class="modal-body">
           <div class="field"><label>Email</label><input type="email" id="new-user-email" placeholder="user@example.com" onkeydown="if(event.key==='Enter')adminCreateUser()"></div>
-          <p style="font-size:13px;color:var(--muted);margin:8px 0 0">They'll receive an invite email to set their password.</p>
+          <div class="field" style="margin-top:12px">
+            <label>Role</label>
+            <select id="new-user-role">
+              <option value="user">User — can view and manage leads</option>
+              <option value="admin">Admin — can also add and remove users</option>
+            </select>
+          </div>
+          <div style="font-size:13px;color:var(--muted);margin:14px 0 0;line-height:1.7;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px">
+            <strong style="color:var(--text)">What happens next</strong>
+            <ol style="padding-left:18px;margin-top:6px">
+              <li>They get an email from Supabase with an invite link.</li>
+              <li>Opening it brings them here to choose a password.</li>
+              <li>That's it — they're signed in.</li>
+            </ol>
+            Until they finish, they'll show as <em>Invited</em> in the list. Invite links expire, so use <strong>Resend</strong> if they wait too long.
+          </div>
           <div class="form-actions">
             <button class="btn-outline" onclick="closeModal('add-user-modal')">Cancel</button>
-            <button class="btn-sm" onclick="adminCreateUser()">Create</button>
+            <button class="btn-sm" id="add-user-btn" onclick="adminCreateUser()">Send invite</button>
           </div>
           <div id="add-user-error" style="color:var(--red);font-size:12px;margin-top:10px;display:none"></div>
         </div>
@@ -920,6 +938,34 @@ a.ext-link:hover{text-decoration:underline}
       </div>
 
       <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">👥 Adding Someone to the Team</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p><strong>If you're an admin</strong> — go to <strong>Admin</strong> in the sidebar, click <strong>+ Add User</strong>, enter their email and pick a role. That's the whole job.</p>
+          <p>They receive an email with an invite link. Opening it brings them straight to a <em>set your password</em> screen; once they choose one, they're signed in. Until then they show as <strong>Invited</strong> on the Admin page.</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>They never got the email:</strong> check spam. Then use <strong>Resend</strong> on their row.</li>
+            <li><strong>"The link doesn't work":</strong> invite links expire. <strong>Resend</strong> issues a fresh one.</li>
+            <li><strong>They're stuck at the sign-in box:</strong> they've probably opened the app directly instead of via the invite link. Have them use <strong>Forgot your password?</strong> — it does the same job.</li>
+            <li><strong>Roles:</strong> <em>User</em> can see and manage every lead. <em>Admin</em> can additionally add and remove people. You can change someone's role any time from the Admin page.</li>
+          </ul>
+          <p style="color:var(--muted)">Removing someone revokes their access immediately. Leads assigned to them are kept.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600;font-size:15px">🔍 When a Scrape Finds Too Few Exhibitors</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
+          <p>The scraper follows pagination automatically — paste the first page of a directory and it will walk the rest, including "load more" buttons and infinite scroll. The job log reports each page as it's collected, so you can see how far it got.</p>
+          <ul style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
+            <li><strong>Got a fraction of the exhibitors?</strong> The site may split its list behind filters (by hall, by category, by letter). Paste each of those URLs on its own line — duplicates are merged automatically.</li>
+            <li><strong>Got zero?</strong> Turn on <strong>LLM Extraction</strong> and re-run. That reads the page with AI instead of CSS selectors.</li>
+            <li><strong>Still zero?</strong> The site likely needs its own config. These sites have one and give the best results: SMM Hamburg, MapYourShow, A2Z Events, Euronaval.</li>
+            <li><strong>Missing emails and contacts?</strong> That's a separate step — turn on <strong>Find Email Addresses</strong>, or use <strong>Find Contacts</strong> on an individual lead.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap">
         <div class="table-toolbar"><span style="font-weight:600;font-size:15px">❓ Need Help?</span></div>
         <div style="padding:24px;display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--text)">
           <p>Contact the project maintainer or open an issue on GitHub for bugs and feature requests.</p>
@@ -1120,12 +1166,46 @@ a.ext-link:hover{text-decoration:underline}
         <text x="112" y="19.5" font-family="'Familjen Grotesk',system-ui,sans-serif" font-size="18" font-weight="700" fill="var(--accent)">Ship</text>
       </svg>
     </div>
-    <h2>Sign in</h2>
-    <p>Sign in to access your tradeshow leads</p>
-    <div class="error" id="auth-error"></div>
-    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authLogin()"></div>
-    <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="password" onkeydown="if(event.key==='Enter')authLogin()"></div>
-    <button class="btn-sm" onclick="authLogin()" style="width:100%;padding:12px;font-size:14px;margin-top:4px" id="auth-btn">Sign In</button>
+    <!-- ── Sign in ── -->
+    <div id="auth-view-signin">
+      <h2>Sign in</h2>
+      <p>Sign in to access your tradeshow leads</p>
+      <div class="error" id="auth-error"></div>
+      <div class="field"><label>Email</label><input type="email" id="auth-email" autocomplete="username" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authLogin()"></div>
+      <div class="field"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="Your password" onkeydown="if(event.key==='Enter')authLogin()"></div>
+      <button class="btn-sm" onclick="authLogin()" style="width:100%;padding:12px;font-size:14px;margin-top:4px" id="auth-btn">Sign In</button>
+      <button class="auth-link" onclick="showAuthView('forgot')">Forgot your password?</button>
+    </div>
+
+    <!-- ── Set / reset password. Reached from an invite or reset email. ── -->
+    <div id="auth-view-setpw" style="display:none">
+      <h2 id="setpw-title">Welcome — set your password</h2>
+      <p id="setpw-sub">Choose a password to finish setting up your account.</p>
+      <div class="error" id="setpw-error"></div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="setpw-email" autocomplete="username" disabled style="opacity:.7">
+      </div>
+      <div class="field">
+        <label>New password</label>
+        <input type="password" id="setpw-password" autocomplete="new-password" placeholder="At least 8 characters" onkeydown="if(event.key==='Enter')authSetPassword()">
+      </div>
+      <div class="field">
+        <label>Confirm password</label>
+        <input type="password" id="setpw-confirm" autocomplete="new-password" placeholder="Type it again" onkeydown="if(event.key==='Enter')authSetPassword()">
+      </div>
+      <button class="btn-sm" onclick="authSetPassword()" style="width:100%;padding:12px;font-size:14px;margin-top:4px" id="setpw-btn">Save password &amp; continue</button>
+    </div>
+
+    <!-- ── Forgot password ── -->
+    <div id="auth-view-forgot" style="display:none">
+      <h2>Reset your password</h2>
+      <p>We'll email you a link to set a new one.</p>
+      <div class="error" id="forgot-error"></div>
+      <div class="field"><label>Email</label><input type="email" id="forgot-email" autocomplete="username" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authRequestReset()"></div>
+      <button class="btn-sm" onclick="authRequestReset()" style="width:100%;padding:12px;font-size:14px;margin-top:4px" id="forgot-btn">Send reset link</button>
+      <button class="auth-link" onclick="showAuthView('signin')">← Back to sign in</button>
+    </div>
   </div>
 </div>
 
@@ -3164,6 +3244,161 @@ function hideAuth() {
   document.getElementById('auth-overlay').classList.add('hidden');
 }
 
+function showAuthView(view) {
+  ['signin','setpw','forgot'].forEach(v => {
+    document.getElementById('auth-view-' + v).style.display = v === view ? '' : 'none';
+  });
+  document.querySelectorAll('.auth-box .error, .auth-box .notice')
+    .forEach(el => el.style.display = 'none');
+  showAuth();
+  const first = document.querySelector(`#auth-view-${view} input:not([disabled])`);
+  setTimeout(() => first?.focus(), 50);
+}
+
+function authError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+/**
+ * Handles the token Supabase puts in the URL fragment when someone follows an
+ * invite or password-reset email.
+ *
+ * This is what made onboarding impossible: the app ignored the fragment
+ * entirely and showed a password prompt for a password the invited user had
+ * never set. There was no way to complete signup outside the Supabase
+ * dashboard.
+ *
+ * Returns true if it took over the screen.
+ */
+async function handleAuthRedirect() {
+  const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+  if (!hash) return false;
+  const params = new URLSearchParams(hash);
+
+  const errorCode = params.get('error_code') || params.get('error');
+  if (errorCode) {
+    const desc = params.get('error_description') || errorCode;
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    showAuthView('signin');
+    authError('auth-error', /expired/i.test(desc)
+      ? 'That link has expired. Ask an admin to resend your invite, or reset your password below.'
+      : decodeURIComponent(desc.replace(/\+/g, ' ')));
+    return true;
+  }
+
+  const type = params.get('type');                  // invite | recovery | signup | magiclink
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken || !['invite', 'recovery', 'signup', 'magiclink'].includes(type || '')) return false;
+
+  // The token is a real session — store it so the PUT /auth/v1/user below is
+  // authenticated — then scrub it from the address bar so it isn't shared or
+  // left in history.
+  localStorage.setItem(LS.at, accessToken);
+  if (refreshToken) localStorage.setItem(LS.rt, refreshToken);
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  const invited = type === 'invite' || type === 'signup';
+  document.getElementById('setpw-title').textContent = invited
+    ? 'Welcome to ShowToShip' : 'Choose a new password';
+  document.getElementById('setpw-sub').textContent = invited
+    ? 'Set a password and you’re in — this is the last setup step.'
+    : 'Enter a new password for your account.';
+  document.getElementById('setpw-email').value = localStorage.getItem(LS.ue) || '';
+  showAuthView('setpw');
+
+  // Fill the email label in afterwards. Awaiting it would leave the person
+  // looking at a sign-in box for however long the lookup takes, which is
+  // exactly the confusion this screen exists to remove.
+  (async () => {
+    try {
+      const res = await fetch(SB_URL + '/auth/v1/user', {
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + accessToken },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return;
+      const email = (await res.json()).email || '';
+      if (email) {
+        localStorage.setItem(LS.ue, email);
+        document.getElementById('setpw-email').value = email;
+      }
+    } catch { /* the field is only a label — leaving it blank is fine */ }
+  })();
+
+  return true;
+}
+
+async function authSetPassword() {
+  const pw = document.getElementById('setpw-password').value;
+  const confirmPw = document.getElementById('setpw-confirm').value;
+  const btn = document.getElementById('setpw-btn');
+  document.getElementById('setpw-error').style.display = 'none';
+
+  if (pw.length < 8) { authError('setpw-error', 'Password must be at least 8 characters.'); return; }
+  if (pw !== confirmPw) { authError('setpw-error', 'Those two passwords don’t match.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(SB_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: 'Bearer ' + getAuthToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: pw }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      authError('setpw-error', d.msg || d.message || d.error_description || 'Could not set your password. The link may have expired — ask an admin to resend the invite.');
+      btn.disabled = false;
+      btn.textContent = 'Save password & continue';
+      return;
+    }
+
+    if (d.email) localStorage.setItem(LS.ue, d.email);
+    // Read the role for this specific user; the nav depends on it.
+    const profile = await sbFetch(`user_profiles?select=role&id=eq.${d.id}&limit=1`).catch(() => null);
+    localStorage.setItem(LS.ur, profile?.[0]?.role || 'user');
+
+    btn.textContent = 'Save password & continue';
+    btn.disabled = false;
+    showAuthView('signin');
+    await afterLogin();
+    toast('You’re all set — welcome to ShowToShip', 'success', 6000);
+  } catch (e) {
+    authError('setpw-error', 'Connection error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Save password & continue';
+  }
+}
+
+async function authRequestReset() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const btn = document.getElementById('forgot-btn');
+  document.getElementById('forgot-error').style.display = 'none';
+  if (!email) { authError('forgot-error', 'Enter your email address.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    // Always reports success: telling an anonymous caller whether an address is
+    // registered would leak the team roster.
+    await fetch(SB_URL + '/auth/v1/recover', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirect_to: window.location.origin + window.location.pathname }),
+    });
+  } catch { /* fall through to the same message */ }
+  btn.disabled = false;
+  btn.textContent = 'Send reset link';
+  showAuthView('signin');
+  toast(`If ${email} has an account, a reset link is on its way.`, 'success', 7000);
+}
+
 async function authLogin() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
@@ -3179,8 +3414,15 @@ async function authLogin() {
       body: JSON.stringify({ email, password }),
     });
     const d = await res.json();
-    if (d.error || d.error_description) {
-      errorEl.textContent = d.error_description || d.msg || d.message || 'Login failed';
+    if (!res.ok || d.error || d.error_description) {
+      const raw = d.error_description || d.msg || d.message || 'Sign-in failed';
+      // Supabase's own wording sends people in circles when the real problem is
+      // that they were invited but never finished setting a password.
+      errorEl.textContent = /invalid login credentials/i.test(raw)
+        ? 'Wrong email or password. If you were invited but never set a password, use the link in your invite email, or reset your password below.'
+        : /email not confirmed/i.test(raw)
+        ? 'Your account isn’t activated yet — open the invite link we emailed you.'
+        : raw;
       errorEl.style.display = 'block';
       document.getElementById('auth-btn').disabled = false;
       return;
@@ -3189,7 +3431,9 @@ async function authLogin() {
     localStorage.setItem(LS.rt, d.refresh_token);
     localStorage.setItem(LS.ue, email);
     // Fetch role
-    const profile = await sbFetch('user_profiles?select=role&limit=1').catch(()=>null);
+    // Must filter by the signed-in user: an unfiltered select returned whichever
+    // row Postgres handed back first, so the Admin nav appeared at random.
+    const profile = await sbFetch(`user_profiles?select=role&id=eq.${d.user?.id}&limit=1`).catch(()=>null);
     localStorage.setItem(LS.ur, profile?.[0]?.role || 'user');
     await afterLogin();
   } catch (e) {
@@ -3204,8 +3448,13 @@ async function afterLogin() {
   hideAuth();
   document.getElementById('auth-email').value = '';
   document.getElementById('auth-password').value = '';
-  if (isAdmin()) document.getElementById('nav-admin').style.display = '';
+  document.getElementById('cfg-email-display').textContent = localStorage.getItem(LS.ue) || '—';
+  document.getElementById('cfg-role-display').textContent = localStorage.getItem(LS.ur) || 'user';
+  document.getElementById('nav-admin').style.display = isAdmin() ? '' : 'none';
   updateUserUI();
+  // Was missing: on a fresh sign-in the "Assign to" dropdown stayed empty
+  // until the user happened to reload the page.
+  await loadTeamMembers();
   await loadAllData();
 }
 
@@ -3233,7 +3482,11 @@ function authLogout() {
   localStorage.removeItem(LS.rt);
   localStorage.removeItem(LS.ue);
   localStorage.removeItem(LS.ur);
-  showAuth();
+  allLeads = [];
+  allShows = [];
+  selected.clear();
+  document.getElementById('nav-admin').style.display = 'none';
+  showAuthView('signin');
 }
 
 function isAdmin() {
@@ -3259,62 +3512,135 @@ async function loadAdminUsers() {
       return;
     }
     const currentEmail = localStorage.getItem(LS.ue);
-    list.innerHTML = data.users.map(u => `
-      <div class="user-row">
+    const pending = data.users.filter(u => !u.confirmed).length;
+
+    list.innerHTML = (pending
+      ? `<div style="margin:12px 16px;padding:10px 12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:6px;font-size:13px;line-height:1.6">
+           <strong>${pending} ${pending === 1 ? 'person hasn’t' : 'people haven’t'} finished setting up.</strong>
+           They need to open the invite email and choose a password. Use <strong>Resend</strong> if the link expired.
+         </div>`
+      : '') +
+      data.users.map(u => `
+      <div class="user-row" data-user-id="${esc(u.id)}">
         <div>
           <div class="user-email">${esc(u.email)} ${u.email === currentEmail ? '<span style="color:var(--dim);font-size:11px">(you)</span>' : ''}</div>
-          <div style="font-size:11px;color:var(--dim)">Created: ${new Date(u.created_at).toLocaleDateString()}</div>
+          <div style="font-size:11px;color:var(--dim)">
+            ${u.confirmed
+              ? `Active${u.last_sign_in_at ? ' · last signed in ' + new Date(u.last_sign_in_at).toLocaleDateString() : ''}`
+              : '<span style="color:var(--amber)">Invited — has not set a password yet</span>'}
+            · added ${new Date(u.created_at).toLocaleDateString()}
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="user-role${u.role === 'admin' ? ' admin' : ''}">${u.role || 'user'}</span>
-          ${u.email !== currentEmail ? `<button class="action-btn" style="color:var(--red)" onclick="adminDeleteUser('${u.id}','${esc(u.email)}')">✕</button>` : ''}
+          <span class="user-role${u.role === 'admin' ? ' admin' : ''}">${esc(u.role || 'user')}</span>
+          ${!u.confirmed ? `<button class="action-btn" data-admin-action="resend">Resend</button>` : ''}
+          ${u.email !== currentEmail ? `<button class="action-btn" data-admin-action="role">${u.role === 'admin' ? 'Make user' : 'Make admin'}</button>` : ''}
+          ${u.email !== currentEmail ? `<button class="action-btn" style="color:var(--red)" data-admin-action="delete" title="Remove user">✕</button>` : ''}
         </div>
       </div>`).join('');
+
+    // Delegated, so email addresses never enter an inline handler string.
+    list.onclick = e => {
+      const row = e.target.closest('[data-user-id]');
+      const action = e.target.closest('[data-admin-action]')?.dataset.adminAction;
+      if (!row || !action) return;
+      const u = data.users.find(x => x.id === row.dataset.userId);
+      if (!u) return;
+      if (action === 'resend') adminResendInvite(u);
+      if (action === 'role')   adminSetRole(u);
+      if (action === 'delete') adminDeleteUser(u.id, u.email);
+    };
   } catch (e) {
-    list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--red)">Error: ' + e.message + '</p>';
+    list.innerHTML = '<p style="padding:24px;text-align:center;color:var(--red)">Error: ' + esc(e.message) + '</p>';
   }
+}
+
+async function adminResendInvite(u) {
+  toast(`Resending invite to ${u.email}…`, 'info', 2000);
+  try {
+    const res = await fetch(`${ADMIN_FN_URL}/users/${u.id}/resend`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(d.error || 'Could not resend the invite', 'error'); return; }
+    toast(`Invite re-sent to ${u.email}`, 'success');
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function adminSetRole(u) {
+  const next = u.role === 'admin' ? 'user' : 'admin';
+  if (!confirm(`Change ${u.email} to "${next}"?${next === 'admin' ? '\n\nAdmins can add and remove users.' : ''}`)) return;
+  try {
+    const res = await fetch(`${ADMIN_FN_URL}/users/${u.id}/role`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: next }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(d.error || 'Could not change the role', 'error'); return; }
+    toast(`${u.email} is now ${next}`, 'success');
+    loadAdminUsers();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 function showAddUser() { openModal('add-user-modal'); }
 
 async function adminCreateUser() {
   const email = document.getElementById('new-user-email').value.trim();
+  const role = document.getElementById('new-user-role')?.value === 'admin' ? 'admin' : 'user';
   const errorEl = document.getElementById('add-user-error');
+  const btn = document.getElementById('add-user-btn');
   errorEl.style.display = 'none';
-  if (!email) { errorEl.textContent = 'Email required'; errorEl.style.display = 'block'; return; }
+  if (!email) { errorEl.textContent = 'Enter an email address'; errorEl.style.display = 'block'; return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errorEl.textContent = 'That doesn’t look like a valid email address';
+    errorEl.style.display = 'block';
+    return;
+  }
 
+  btn.disabled = true;
+  btn.textContent = 'Sending invite…';
   try {
     const res = await fetch(ADMIN_FN_URL + '/users', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, role }),
     });
+    const d = await res.json().catch(()=>({}));
     if (!res.ok) {
-      const d = await res.json().catch(()=>({}));
-      errorEl.textContent = d.error || 'Failed to create user';
+      errorEl.textContent = /already been registered|already exists/i.test(d.error || '')
+        ? 'That address already has an account. If they never signed in, use Resend on their row.'
+        : (d.error || 'Could not send the invite');
       errorEl.style.display = 'block';
       return;
     }
     closeModal('add-user-modal');
     document.getElementById('new-user-email').value = '';
     loadAdminUsers();
-    alert(`✓ ${email} was invited. They'll receive an email to set up their account.`);
+    toast(`Invite sent to ${email} — they'll get an email to choose a password`, 'success', 7000);
   } catch (e) {
     errorEl.textContent = 'Error: ' + e.message;
     errorEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send invite';
   }
 }
 
 async function adminDeleteUser(id, email) {
-  if (!confirm(`Delete user "${email}"? This cannot be undone.`)) return;
+  if (!confirm(`Remove "${email}"?\n\nThey lose access immediately. Leads assigned to them are kept, but stay assigned to their name.`)) return;
   try {
     const res = await fetch(ADMIN_FN_URL + '/users/' + id, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + getAuthToken() },
     });
-    if (!res.ok) { alert('Failed to delete user'); return; }
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { toast(d.error || 'Could not remove that user', 'error'); return; }
+    toast(`Removed ${email}`, 'success');
     loadAdminUsers();
-  } catch (e) { alert('Error: ' + e.message); }
+    loadTeamMembers();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 }
 
 // ── AI Provider ───────────────────────────────────────────────────────────
@@ -3659,25 +3985,30 @@ loadHunterKey();
   if (ue) document.getElementById('user-name').textContent = ue.split('@')[0];
   document.getElementById('cfg-email-display').textContent = ue || '—';
   document.getElementById('cfg-role-display').textContent = role || 'user';
-  initTheme();
+
+  // Also catch a token arriving without a page load — e.g. pasting the invite
+  // link while the app is already open.
+  window.addEventListener('hashchange', () => { handleAuthRedirect(); });
+
+  // An invite or reset link takes priority over any stored session.
+  if (await handleAuthRedirect()) return;
 
   if (at) {
-    const refreshed = await refreshSession().catch(()=>false);
-    if (refreshed || at) {
+    // Only proceed if the session is actually valid. The old check was
+    // `if (refreshed || at)` — a stale token still entered the app, which then
+    // 401'd on every request and bounced the user back out.
+    const refreshed = await refreshSession().catch(() => false);
+    if (refreshed) {
       hideAuth();
-      if (isAdmin()) document.getElementById('nav-admin').style.display = '';
+      document.getElementById('nav-admin').style.display = isAdmin() ? '' : 'none';
       await loadTeamMembers();
       await loadAllData();
-      document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
-      });
       return;
     }
+    localStorage.removeItem(LS.at);
+    localStorage.removeItem(LS.rt);
   }
-  showAuth();
-  document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
-  });
+  showAuthView('signin');
 })();
 </script>
 </body>

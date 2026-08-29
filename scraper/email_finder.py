@@ -131,6 +131,8 @@ def score_email(email: str, company_name: str = "", company_domain: str = "") ->
     Score an email 0–100 for relevance.
     Higher = more likely to be the right contact.
     """
+    if email.count("@") != 1:
+        return 0
     score = 0
     local, domain = email.split("@")
 
@@ -613,6 +615,9 @@ class EmailFinder:
                 try:
                     result = await asyncio.wait_for(self._find_for_one(row), timeout=60)
                 except asyncio.TimeoutError:
+                    result = row
+                except Exception as e:
+                    print(f"  ⚠️  email lookup failed for {row.get('company_name','?')}: {e}")
                     result = row
                 done += 1
                 found = "✓" if result.get("email") else "–"

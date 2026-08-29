@@ -68,6 +68,8 @@ async def main():
     else:
         job_id = await create_job(args.show_name, urls, options)
 
+    rows = None
+    db_result = None
     try:
         # ── Phase 1 + 2: scrape exhibitor data ─────────────────────────────
         print("📋  Phase 1/2 — Scraping exhibitor data…")
@@ -119,6 +121,13 @@ async def main():
         import traceback
         err = traceback.format_exc()
         print(f"❌  Pipeline failed: {e}\n{err}")
+        if rows and db_result is None:
+            print(f"💾  Attempting best-effort save of {len(rows)} scraped rows before failing…")
+            try:
+                db_result = await save_leads(rows, args.show_name, job_id=job_id)
+                print(f"   → saved {db_result.get('new', 0)} new, {db_result.get('updated', 0)} updated despite failure")
+            except Exception as save_err:
+                print(f"❌  Best-effort save also failed: {save_err}")
         await fail_job(job_id, str(e))
         raise
 

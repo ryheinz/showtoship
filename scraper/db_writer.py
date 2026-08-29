@@ -118,45 +118,61 @@ def _clean_lead(row: dict, tradeshow_id: str, tradeshow_name: str) -> dict:
     }
 
 
+MERGE_FIELDS = ["email", "phone", "contact_name", "contact_title", "linkedin_url",
+                "description", "products", "booth_number", "hall"]
+
+
 async def upsert_lead(session: aiohttp.ClientSession,
                        row: dict, tradeshow_id: str, tradeshow_name: str) -> tuple[str, bool]:
     """
     Insert or update a lead.
     Returns (lead_id, is_new).
-    Dedup key: company_name + tradeshow_id
+    Dedup key: company_name_key (case/whitespace-normalized) + tradeshow_id.
+
+    Inserts atomically via ON CONFLICT DO NOTHING instead of GET-then-POST:
+    a prior existence check can't protect against two concurrent scrapers
+    (concurrency=5) both seeing "no row yet" and both inserting — the DB's
+    unique index is the only thing that can arbitrate that race.
     """
     company = str(row.get("company_name", "")).strip()
     if not company:
         return None, False
-
-    # Check existing
-    existing = await _get(session, "leads", {
-        "company_name": f"eq.{company}",
-        "tradeshow_id": f"eq.{tradeshow_id}",
-        "select": "id,email,status"
-    })
+    company_key = company.lower()
 
     clean = _clean_lead(row, tradeshow_id, tradeshow_name)
 
-    if existing:
-        lead_id = existing[0]["id"]
-        # Only update fields that have new/better data
-        updates = {}
-        for field in ["email", "phone", "contact_name", "contact_title", "linkedin_url",
-                       "description", "products", "booth_number", "hall"]:
-            if clean.get(field) and not existing[0].get(field):
-                updates[field] = clean[field]
-        # Always update email enrichment fields
-        for field in ["email_alts", "email_source", "email_confidence"]:
-            if clean.get(field):
-                updates[field] = clean[field]
+    headers = {**_headers(), "Prefer": "return=representation,resolution=ignore-duplicates"}
+    params = {"on_conflict": "company_name_key,tradeshow_id"}
+    async with session.post(_url("leads"), headers=headers, params=params, json=clean) as r:
+        body = await r.json()
+        if r.status in (200, 201):
+            if body:
+                return body[0]["id"], True
+            # Empty body = conflict was ignored, row already existed — fall through to merge.
+        else:
+            print(f"  POST leads error {r.status}: {str(body)[:200]}")
 
-        if updates:
-            await _patch(session, "leads", {"id": lead_id}, updates)
-        return lead_id, False
-    else:
-        result = await _post(session, "leads", clean)
-        return (result["id"] if result else None), True
+    # Existing row: merge in fields it's missing, always refresh email enrichment.
+    existing = await _get(session, "leads", {
+        "company_name_key": f"eq.{company_key}",
+        "tradeshow_id": f"eq.{tradeshow_id}",
+        "select": "id," + ",".join(MERGE_FIELDS)
+    })
+    if not existing:
+        return None, False
+
+    lead_id = existing[0]["id"]
+    updates = {}
+    for field in MERGE_FIELDS:
+        if clean.get(field) and not existing[0].get(field):
+            updates[field] = clean[field]
+    for field in ["email_alts", "email_source", "email_confidence"]:
+        if clean.get(field):
+            updates[field] = clean[field]
+
+    if updates:
+        await _patch(session, "leads", {"id": lead_id}, updates)
+    return lead_id, False
 
 
 # ── Bulk upsert pipeline ──────────────────────────────────────────────────────

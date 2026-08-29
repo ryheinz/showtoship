@@ -92,7 +92,9 @@ serve(async (req) => {
     )
     if (error) return json({ error: error.message }, 400)
     if (data.user) {
-      // Service role: user_profiles is read-only to the authenticated role.
+      // adminClient (service role): the tightened RLS on user_profiles no longer
+      // grants INSERT to the caller's own authenticated session. upsert rather
+      // than insert because handle_new_user may already have created the row.
       await adminClient.from('user_profiles').upsert({
         id: data.user.id,
         email: data.user.email,
@@ -169,8 +171,10 @@ serve(async (req) => {
     const userId = path.split('/').pop()
     if (!userId) return json({ error: 'Missing user ID' }, 400)
     if (userId === user.id) return json({ error: 'You cannot delete your own account' }, 400)
-    // Delete the auth user first: user_profiles cascades from auth.users, and
-    // deleting the profile first would strand the account if this call fails.
+    // adminClient (service role): tightened RLS no longer grants DELETE to the
+    // caller's session. Delete the auth user FIRST — user_profiles cascades from
+    // auth.users, so removing the profile first would strand the account if this
+    // call then failed.
     const { error } = await adminClient.auth.admin.deleteUser(userId)
     if (error) return json({ error: error.message }, 500)
     await adminClient.from('user_profiles').delete().eq('id', userId)

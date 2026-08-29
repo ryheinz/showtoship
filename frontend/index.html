@@ -764,8 +764,8 @@ a.ext-link:hover{text-decoration:underline}
           <ol style="padding-left:20px;display:flex;flex-direction:column;gap:6px">
             <li>Go to <strong>Tradeshows</strong> and click the <strong>Scrape</strong> button next to a show, or click <strong>+ New Scrape Job</strong> on the All Leads page.</li>
             <li>Type the show name (it auto-creates a new show if one doesn't exist).</li>
-            <li>Paste the exhibitor list URL(s) — one per line. Supported domains: mapyourshow.com, a2zinc.net (and custom A2Z domains).</li>
-            <li>Toggle <strong>LLM Extraction</strong> on for unsupported sites (uses AI to parse the page). Keep it off for supported sites.</li>
+            <li>Paste the exhibitor list URL(s) — one per line. Paste the <em>first</em> page of a paginated list; the scraper follows the rest automatically. Sites with a dedicated config (best results): smm-hamburg.com, mapyourshow.com, a2zinc.net, euronaval.com. Any other site uses the generic crawler.</li>
+            <li>Toggle <strong>LLM Extraction</strong> on if a site comes back with few or no exhibitors — it re-reads the page with AI. Keep it off otherwise; it's slower and costs API credit.</li>
             <li>Toggle <strong>Deep Scrape</strong> if you want to follow each exhibitor's detail page for more data.</li>
             <li>Toggle <strong>Find Emails</strong> to hunt for email addresses on company websites (slow on large lists).</li>
             <li>Click <strong>Run Scraper</strong> — results appear in the table automatically.</li>

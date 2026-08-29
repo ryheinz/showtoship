@@ -9,7 +9,7 @@
 ```
 GitHub Pages (frontend) ←→ Supabase (database) ←→ GitHub Actions (scraper)
                                                          ↕
-                                              crawl4ai + email_finder + Phantombuster
+                                    Playwright + extractors + email_finder + Phantombuster
 ```
 
 | Component | Service | Cost |
@@ -109,17 +109,48 @@ invite email, click it, choose a password, and they're in.
 ```
 showtoship/
 ├── .github/workflows/
-│   ├── scrape.yml           # Scraper job (triggered from UI)
-│   └── deploy-pages.yml     # Auto-deploys frontend
+│   ├── scrape.yml           # Scraper job (dispatched from the UI)
+│   └── deploy-pages.yml     # Publishes frontend/ to the gh-pages branch
 ├── frontend/
-│   └── index.html           # Full web app (GitHub Pages)
+│   └── index.html           # The whole web app
 ├── scraper/
-│   ├── run_pipeline.py      # Main orchestrator
-│   ├── exhibitor_scraper.py # Phase 1+2: exhibitor data
+│   ├── run_pipeline.py      # Orchestrator — what Actions runs
+│   ├── exhibitor_scraper.py # Phase 1+2: exhibitor list + profile pages
+│   ├── list_crawler.py      # Walks every page of a paginated listing
+│   ├── extractors.py        # Picks the best selector, pulls the fields
+│   ├── llm_extract.py       # Model-based extraction fallback
 │   ├── email_finder.py      # Phase 3: email hunting
 │   ├── linkedin_enricher.py # Phase 4: LinkedIn via Phantombuster
 │   ├── db_writer.py         # Supabase writer with deduplication
-│   └── site_configs.py      # Site-specific CSS selectors
+│   ├── site_configs.py      # Site-specific scrapers (SMM, MapYourShow, A2Z…)
+│   └── tests/               # python3 scraper/tests/test_extractors.py
 └── supabase/
-    └── schema.sql           # Database tables + indexes
+    ├── schema.sql           # Tables, indexes, RLS policies
+    ├── migrations/          # Run these on an existing database
+    └── functions/           # Edge functions (chat, dispatch, admin, …)
+```
+
+## Scraping notes
+
+The scraper tries three things, in order:
+
+1. **A site-specific config** (`scraper/site_configs.py`) — best quality, because
+   it reads the show's own API. Currently: SMM Hamburg, MapYourShow, A2Z Events,
+   Euronaval.
+2. **The generic crawler** — walks all pages of the listing (next-links, numbered
+   pagers, load-more buttons, infinite scroll), then scores several candidate CSS
+   selectors and uses whichever produces the most credible exhibitor rows.
+3. **LLM extraction** — only when enabled and the selectors came up short.
+
+If a show returns few or no exhibitors, the fastest fix is usually to add a
+config for that domain in `site_configs.py`. Turning on **LLM Extraction** is the
+generic escape hatch.
+
+Caps you can tune: `--max-list-pages` (default 100) and `--max-detail-pages`
+(default 0 = no limit).
+
+## Running the tests
+```bash
+python3 scraper/tests/test_extractors.py   # extraction + dedup, no network
+python3 scraper/tests/test_pagination.py   # multi-page crawl against localhost
 ```

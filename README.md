@@ -31,6 +31,13 @@ Create a new repo (private recommended) and push these files.
 2. SQL Editor → New Query → paste `supabase/schema.sql` → Run
 3. If you are upgrading an existing install, also run every file in
    `supabase/migrations/` in filename order.
+
+> **Check RLS is actually in effect.** `schema.sql` enables it, but a live
+> database can drift — this one had it switched off on `leads` and
+> `tradeshows`, which left every lead readable and writable by anyone holding
+> the anon key from the page source. `migrations/20260829_03_enforce_rls_on_leads.sql`
+> diagnoses and repairs that. Set the Actions `SUPABASE_KEY` secret to the
+> service_role key *before* running it, or the scraper will stop writing.
 4. Settings → API → copy the **Project URL** and the **anon/public** key
 5. Put both into `frontend/index.html` (`SB_URL` / `SB_KEY` near the top of the
    script block). The anon key is *meant* to be public — access is controlled by

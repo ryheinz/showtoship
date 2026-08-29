@@ -71,10 +71,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Write URLs file
-        run: |
-          cat > /tmp/urls.txt << 'EOF'
-          ${{ github.event.inputs.urls }}
-          EOF
+        env:
+          # Passed via env, never interpolated into the script body — a URL
+          # containing a shell metacharacter or an "EOF" line would otherwise
+          # execute as shell in a job that holds the Supabase secrets.
+          URLS: ${{ github.event.inputs.urls }}
+        run: printenv URLS > /tmp/urls.txt
 
       - name: Install Ollama (for LLM extraction)
         if: ${{ github.event.inputs.use_llm == 'true' }}

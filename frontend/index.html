@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.github.com https://fonts.googleapis.com; img-src 'self' data:;">
+<!-- connect-src must list every host the app calls directly. The OpenAI /
+     Anthropic / custom provider options in Settings were dead before these
+     were allowed: the fetch was blocked and surfaced only as a console error. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.github.com https://fonts.googleapis.com https://api.openai.com https://api.anthropic.com; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none';">
 <title>ShowToShip — Tradeshow Lead Intelligence</title>
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1214,13 +1217,44 @@ async function sbFetch(path, opts = {}) {
     if (!res.ok) {
       const body = await res.text().catch(()=>'');
       console.error(`sbFetch ${method} ${path} → ${res.status}: ${body.slice(0,200)}`);
+      lastDbError = describeDbError(res.status, body);
       return null;
     }
     return res.json();
   } catch (e) {
     console.error(`sbFetch ${method} ${path} →`, e);
+    lastDbError = 'Network error — check your connection';
     return null;
   }
+}
+
+// sbFetch returns null for "it failed"; this carries the reason so callers can
+// show it instead of pretending the write succeeded.
+let lastDbError = '';
+
+function describeDbError(status, body) {
+  let detail = '';
+  try { detail = JSON.parse(body).message || ''; } catch { detail = ''; }
+  if (status === 409 || /duplicate key/i.test(detail)) return 'Already exists (duplicate)';
+  if (status === 403) return 'You do not have permission to do that';
+  if (status === 401) return 'Your session expired — sign in again';
+  return detail ? `Save failed: ${detail}` : `Save failed (HTTP ${status})`;
+}
+
+/**
+ * Wraps a write. Returns true on success; on failure shows the reason and
+ * reloads the affected data so the UI stops displaying a value that was
+ * never persisted.
+ */
+async function dbWrite(path, opts, { onError } = {}) {
+  lastDbError = '';
+  const result = await sbFetch(path, opts);
+  if (result === null) {
+    toast(lastDbError || 'Save failed', 'error');
+    if (onError) onError(lastDbError);
+    return false;
+  }
+  return true;
 }
 
 async function testSupabase() {
@@ -1324,12 +1358,21 @@ function loadDashboard() {
     stbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--dim);padding:32px">No shows added</td></tr>';
   } else {
     stbody.innerHTML = allShows.slice(0, 6).map(s => {
-      const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
-      return `<tr onclick="filterByShow('${esc(s.name)}')" style="cursor:pointer"><td><div class="company-name">${esc(s.name)}</div></td>
-        <td style="font-size:12px;color:var(--muted)">${s.date_start || '—'}</td>
+      const leads = leadsForShow(s).length;
+      return `<tr data-show-id="${esc(s.id)}" style="cursor:pointer"><td><div class="company-name">${esc(s.name)}</div></td>
+        <td style="font-size:12px;color:var(--muted)">${esc(s.date_start || '—')}</td>
         <td style="text-align:center">${leads}</td></tr>`;
     }).join('');
   }
+
+  tbody.onclick = e => {
+    const id = e.target.closest('tr[data-lead-id]')?.dataset.leadId;
+    if (id) openLeadPanel(id);
+  };
+  stbody.onclick = e => {
+    const show = allShows.find(s => s.id === e.target.closest('tr[data-show-id]')?.dataset.showId);
+    if (show) filterByShow(show.name);
+  };
 }
 
 // ── Reports ────────────────────────────────────────────────────────────────
@@ -1583,7 +1626,12 @@ async function askReport() {
       { role: 'user', content: userMsg },
     ])
 
-    answerEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7">' + reply.replace(/\n/g, '<br>') + '</div>'
+    // Model output as text, not markup — see appendChatMessage.
+    answerEl.innerHTML = ''
+    const box = document.createElement('div')
+    box.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;line-height:1.7;white-space:pre-wrap'
+    box.textContent = reply
+    answerEl.appendChild(box)
   } catch (e) {
     answerEl.innerHTML = `<div style="color:var(--red)">Error: ${esc(e.message)}</div>`
   }
@@ -1859,19 +1907,19 @@ function openLeadPanel(id) {
       ${infoRow('Category', lead.category)}
       ${infoRow('Products', lead.products)}
       ${infoRow('Description', lead.description)}
-      ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${lead.website}" target="_blank" class="ext-link">↗ Visit</a></div>` : ''}
+      ${lead.website ? `<div class="info-row"><span class="info-label">Website</span><a href="${esc(safeUrl(lead.website))}" target="_blank" rel="noopener noreferrer" class="ext-link">↗ Visit</a></div>` : ''}
       <div class="info-row" style="margin-top:10px;gap:8px;flex-direction:column">
-        <button class="btn-sm" onclick="openChatWithCompany('${esc(lead.company_name)}')" style="width:100%;padding:14px;font-size:15px">🚢 Ask AI about this company</button>
-        <button class="btn-sm" onclick="findContactsForLead('${lead.id}')" style="width:100%;padding:14px;font-size:15px">👤 Find Contacts</button>
+        <button class="btn-sm" id="panel-ask-ai" style="width:100%;padding:14px;font-size:15px">🚢 Ask AI about this company</button>
+        <button class="btn-sm" id="panel-find-contacts" style="width:100%;padding:14px;font-size:15px">👤 Find Contacts</button>
       </div>
       <div id="contacts-result-${lead.id}" style="margin-top:8px"></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Contact</div>
       ${lead.contact_name ? `<div class="info-row"><span class="info-label">Name</span><span class="info-value">${esc(lead.contact_name)}${lead.contact_title ? ' <span style="color:var(--dim)">· '+esc(lead.contact_title)+'</span>' : ''}</span></div>` : infoRow('Name','—')}
-      ${lead.email ? `<div class="info-row"><span class="info-label">Email</span><a href="mailto:${lead.email}" class="ext-link">${esc(lead.email)}</a></div>` : infoRow('Email','—')}
+      ${lead.email ? `<div class="info-row"><span class="info-label">Email</span><a href="mailto:${encodeURIComponent(lead.email)}" class="ext-link">${esc(lead.email)}</a></div>` : infoRow('Email','—')}
       ${infoRow('Phone', lead.phone)}
-      ${lead.linkedin_url ? `<div class="info-row"><span class="info-label">LinkedIn</span><a href="${lead.linkedin_url}" target="_blank" class="ext-link">↗ Profile</a></div>` : ''}
+      ${lead.linkedin_url ? `<div class="info-row"><span class="info-label">LinkedIn</span><a href="${esc(safeUrl(lead.linkedin_url))}" target="_blank" rel="noopener noreferrer" class="ext-link">↗ Profile</a></div>` : ''}
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Lead Management</div>
@@ -1906,10 +1954,18 @@ function openLeadPanel(id) {
       </div>
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-      <button class="btn-outline" style="color:#e74c3c;border-color:#e74c3c" onclick="deleteLead('${lead.id}')">Delete Lead</button>
+      <button class="btn-outline" id="panel-delete" style="color:#e74c3c;border-color:#e74c3c">Delete Lead</button>
     </div>
   `;
-  document.getElementById('lead-panel').classList.add('open');
+  // Wired after render rather than inline, so company names with quotes or
+  // angle brackets can never end up inside a JS string.
+  document.getElementById('panel-ask-ai').onclick        = () => openChatWithCompany(lead.company_name);
+  document.getElementById('panel-find-contacts').onclick = () => findContactsForLead(lead.id);
+  document.getElementById('panel-delete').onclick        = () => deleteLead(lead.id);
+
+  const panel = document.getElementById('lead-panel');
+  panel.classList.add('open');
+  panel.querySelector('.panel-close')?.focus();
 }
 
 function closePanel() {
@@ -1947,25 +2003,71 @@ function loadShows() {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--dim);padding:40px">No shows yet</td></tr>';
     return;
   }
+  // No show data goes into an inline handler — a name like "O'Brien Expo"
+  // would break the JS, and a scraped one could execute it. Every action is a
+  // data-action attribute picked up by the delegated listener below.
   tbody.innerHTML = allShows.map(s => {
-    const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length;
-    return `<tr>
-      <td><div class="company-name" style="cursor:pointer" onclick="filterByShow('${esc(s.name)}')">${esc(s.name)}</div></td>
-      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:rgba(91,141,239,.06);border-left:2px solid rgba(91,141,239,.2)" ondblclick="editShowUrl('${esc(s.id)}',this)" title="Double-click to edit">${s.website ? `<a href="${esc(s.website)}" target="_blank" style="color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(91,141,239,.4);font-size:12px">${esc(s.website)}</a>` : '<span style="color:var(--accent);opacity:.5;border-bottom:1px dotted rgba(91,141,239,.3)">✎ click to add</span>'}
-      <td style="font-size:13px;color:var(--muted);cursor:pointer" ondblclick="editShowField('${esc(s.id)}','location',this)" title="Double-click to edit">${esc(s.location||'—')}</td>
-      <td style="font-size:13px;color:var(--muted);cursor:pointer" ondblclick="editShowField('${esc(s.id)}','industry',this)" title="Double-click to edit">${esc(s.industry||'—')}</td>
-      <td style="font-size:12px;color:var(--muted);cursor:pointer" ondblclick="editShowDates('${esc(s.id)}',this)" title="Double-click to edit">${s.date_start||''}${s.date_end?' → '+s.date_end:''}</td>
+    const leads = leadsForShow(s).length;
+    return `<tr data-show-id="${esc(s.id)}">
+      <td><div class="company-name" style="cursor:pointer" data-action="filter-show">${esc(s.name)}</div></td>
+      <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:rgba(91,141,239,.06);border-left:2px solid rgba(91,141,239,.2)" data-edit="url" title="Double-click to edit">${s.website
+        ? `<a href="${esc(safeUrl(s.website))}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(91,141,239,.4);font-size:12px">${esc(s.website)}</a>`
+        : '<span style="color:var(--accent);opacity:.5;border-bottom:1px dotted rgba(91,141,239,.3)">✎ double-click to add</span>'}</td>
+      <td style="font-size:13px;color:var(--muted);cursor:pointer" data-edit="location" title="Double-click to edit">${esc(s.location||'—')}</td>
+      <td style="font-size:13px;color:var(--muted);cursor:pointer" data-edit="industry" title="Double-click to edit">${esc(s.industry||'—')}</td>
+      <td style="font-size:12px;color:var(--muted);cursor:pointer" data-edit="dates" title="Double-click to edit">${esc(s.date_start||'')}${s.date_end?' → '+esc(s.date_end):''}</td>
       <td style="text-align:center;font-weight:600">${leads}</td>
-      <td style="text-align:center;cursor:pointer" onclick="toggleAttending('${esc(s.id)}',this)">${s.attending ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--dim)">—</span>'}</td>
+      <td style="text-align:center;cursor:pointer" data-action="toggle-attending">${s.attending ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--dim)">—</span>'}</td>
       <td>
-        <button class="action-btn" onclick="scrapeShow('${esc(s.name)}')">Scrape</button>
-        <button class="action-btn" style="margin-left:4px" onclick="editShow('${esc(s.id)}')">Edit</button>
-        <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="clearShowLeads('${esc(s.id)}','${esc(s.name)}')">Clear</button>
-        <button class="action-btn" style="margin-left:4px;color:var(--red)" onclick="deleteShow('${esc(s.id)}','${esc(s.name)}')">✕</button>
+        <button class="action-btn" data-action="scrape">Scrape</button>
+        <button class="action-btn" style="margin-left:4px" data-action="edit">Edit</button>
+        <button class="action-btn" style="margin-left:4px;color:var(--red)" data-action="clear">Clear</button>
+        <button class="action-btn" style="margin-left:4px;color:var(--red)" data-action="delete" title="Delete show">✕</button>
       </td>
     </tr>`;
   }).join('');
 }
+
+/**
+ * Leads belonging to a show. The table counted by name while Clear/Delete
+ * filtered by id, so a show displaying 412 leads offered to "delete ALL 0" —
+ * CSV-imported rows only ever had the name set. Both keys count now.
+ */
+function leadsForShow(show) {
+  if (!show) return [];
+  const name = (show.name || '').trim().toLowerCase();
+  return allLeads.filter(l =>
+    (l.tradeshow_id && l.tradeshow_id === show.id) ||
+    (name && (l.tradeshow_name || '').trim().toLowerCase() === name)
+  );
+}
+
+// Delegated handlers for the shows table.
+document.getElementById('shows-table-body')?.addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-show-id]');
+  if (!tr) return;
+  const show = allShows.find(s => s.id === tr.dataset.showId);
+  if (!show) return;
+  const action = e.target.closest('[data-action]')?.dataset.action;
+  switch (action) {
+    case 'filter-show':      filterByShow(show.name); break;
+    case 'toggle-attending': toggleAttending(show.id); break;
+    case 'scrape':           scrapeShow(show.name); break;
+    case 'edit':             editShow(show.id); break;
+    case 'clear':            clearShowLeads(show.id); break;
+    case 'delete':           deleteShow(show.id); break;
+  }
+});
+
+document.getElementById('shows-table-body')?.addEventListener('dblclick', e => {
+  const tr = e.target.closest('tr[data-show-id]');
+  const td = e.target.closest('td[data-edit]');
+  if (!tr || !td) return;
+  const field = td.dataset.edit;
+  if (field === 'url')        editShowUrl(tr.dataset.showId, td);
+  else if (field === 'dates') editShowDates(tr.dataset.showId, td);
+  else                        editShowField(tr.dataset.showId, field, td);
+});
 
 function openAddShowModal() {
   editShowId = null;
@@ -2023,23 +2125,49 @@ function editShow(id) {
   openModal('show-modal');
 }
 
-async function clearShowLeads(id, name) {
-  const count = allLeads.filter(l => l.tradeshow_id === id).length;
-  if (!confirm(`Delete ALL ${count} leads for "${name}"? The tradeshow will be kept.`)) return;
-  await sbFetch(`leads?tradeshow_id=eq.${id}`, { method: 'DELETE' });
-  allLeads = allLeads.filter(l => l.tradeshow_id !== id);
+/** Delete every lead for a show, by id and by name — see leadsForShow. */
+async function deleteLeadsForShow(show) {
+  const doomed = leadsForShow(show);
+  if (!doomed.length) return true;
+  const ids = doomed.map(l => l.id);
+  for (const chunk of chunked(ids, 200)) {
+    const ok = await dbWrite(`leads?id=in.(${chunk.join(',')})`, { method: 'DELETE' });
+    if (!ok) return false;
+  }
+  const gone = new Set(ids);
+  allLeads = allLeads.filter(l => !gone.has(l.id));
+  return true;
+}
+
+async function clearShowLeads(id) {
+  const show = allShows.find(s => s.id === id);
+  if (!show) return;
+  const count = leadsForShow(show).length;
+  if (!count) { toast(`"${show.name}" has no leads to clear`, 'info'); return; }
+  if (!confirm(`Delete ALL ${count} leads for "${show.name}"?\n\nThe tradeshow itself will be kept. This cannot be undone.`)) return;
+  if (await deleteLeadsForShow(show)) toast(`Deleted ${count} leads from "${show.name}"`, 'success');
   filterLeadsTable();
   loadShows();
   loadDashboard();
 }
 
-async function deleteShow(id, name) {
-  if (!confirm(`Delete "${name}" and all ${allLeads.filter(l=>l.tradeshow_id===id).length} leads?`)) return;
-  await sbFetch(`leads?tradeshow_id=eq.${id}`, { method: 'DELETE' });
-  await sbFetch(`tradeshows?id=eq.${id}`, { method: 'DELETE' });
+async function deleteShow(id) {
+  const show = allShows.find(s => s.id === id);
+  if (!show) return;
+  const count = leadsForShow(show).length;
+  if (!confirm(`Delete the show "${show.name}"${count ? ` and all ${count} of its leads` : ''}?\n\nThis cannot be undone.`)) return;
+  if (!(await deleteLeadsForShow(show))) return;
+  if (await dbWrite(`tradeshows?id=eq.${id}`, { method: 'DELETE' })) {
+    toast(`Deleted "${show.name}"`, 'success');
+  }
   await loadAllData();
   loadLeads();
   loadShows();
+}
+
+/** PostgREST has a URL length limit, so bulk id filters go out in batches. */
+function* chunked(arr, size) {
+  for (let i = 0; i < arr.length; i += size) yield arr.slice(i, i + size);
 }
 
 function scrapeShow(name) {
@@ -2413,7 +2541,48 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
-function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Escapes text AND quotes. Quotes matter because scraped company names land in
+// attribute values (title="…"). Note this is NOT sufficient to make data safe
+// inside an inline handler — onclick="f('${esc(x)}')" still breaks on an
+// apostrophe, because the HTML parser turns &#39; back into ' before the JS
+// parser runs. Anything data-driven uses data-* attributes + delegation below.
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Scraped sites supply these URLs, so javascript:/data: must never survive.
+function safeUrl(u) {
+  const s = String(u || '').trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return '';   // any other scheme
+  return 'https://' + s;                            // bare "example.com"
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────
+// Every write used to fail silently: sbFetch returns null on error and callers
+// updated the local cache anyway, so a failed save looked exactly like a
+// successful one. Nothing may swallow a write failure now.
+function toast(msg, kind = 'info', ms = 4000) {
+  let host = document.getElementById('toast-host');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toast-host';
+    document.body.appendChild(host);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + kind;
+  t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 250); }, ms);
+}
 function toggleTheme() {
   const html = document.documentElement;
   const isLight = html.getAttribute('data-theme') === 'light';
@@ -2801,6 +2970,10 @@ const AI_PROVIDER_KEY = 'ai_provider'
 const AI_KEY_KEY = 'ai_key'
 const AI_ENDPOINT_KEY = 'ai_endpoint'
 
+// Keep in step with supabase/functions/chat/index.ts.
+const ANTHROPIC_MODEL = 'claude-haiku-4-5'
+const OPENAI_MODEL = 'gpt-4o-mini'
+
 const AI_PROVIDER_CONFIG = {
   default: { name: 'Default', endpoint: `https://${PROJECT_REF}.functions.supabase.co/chat`, needsKey: false },
   openai:  { name: 'OpenAI',  endpoint: 'https://api.openai.com/v1/chat/completions', needsKey: true },
@@ -2905,40 +3078,61 @@ async function findContactsForLead(leadId) {
       return
     }
 
+    // Hunter returns third-party names; index into this array instead of
+    // interpolating them into an onclick string.
+    const shown = data.contacts.slice(0, 10)
+    lastContactResults = shown
+
     resultEl.innerHTML = `
       <div style="font-size:14px;font-weight:600;margin-bottom:8px">Found ${data.contacts.length} contacts</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        ${data.contacts.slice(0, 10).map((c, i) => `
+        ${shown.map((c, i) => `
           <div style="font-size:14px;padding:10px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div>
                 <strong>${esc(c.name || 'Unknown')}</strong>
                 ${c.title ? '<span style="color:var(--text)"> · '+esc(c.title)+'</span>' : ''}
               </div>
-              <button class="action-btn" onclick="saveContact('${leadId}', '${esc(c.name)}', '${esc(c.title)}', '${esc(c.email)}', ${i})" style="font-size:13px;padding:6px 14px">Use</button>
+              <button class="action-btn" data-contact-idx="${i}" style="font-size:13px;padding:6px 14px">Use</button>
             </div>
             <div style="font-size:13px;color:var(--text);margin-top:4px">
-              ${c.email ? '<a href="mailto:'+esc(c.email)+'" style="color:var(--accent);font-size:13px">'+esc(c.email)+'</a>' : ''}
-              ${c.confidence ? ' <span style="font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface);color:var(--muted);font-weight:500">'+c.confidence+'%</span>' : ''}
+              ${c.email ? '<a href="mailto:'+encodeURIComponent(c.email)+'" style="color:var(--accent);font-size:13px">'+esc(c.email)+'</a>' : ''}
+              ${c.confidence ? ' <span style="font-size:11px;padding:2px 6px;border-radius:3px;background:var(--surface);color:var(--muted);font-weight:500">'+Number(c.confidence)+'%</span>' : ''}
             </div>
           </div>
         `).join('')}
         ${data.contacts.length > 10 ? '<div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0">… and '+(data.contacts.length-10)+' more</div>' : ''}
       </div>
     `
+    resultEl.querySelectorAll('[data-contact-idx]').forEach(btn => {
+      btn.onclick = () => {
+        const c = lastContactResults[Number(btn.dataset.contactIdx)]
+        if (c) saveContact(leadId, c)
+      }
+    })
   } catch (e) {
     resultEl.innerHTML = `<div style="font-size:14px;color:var(--red);padding:12px 0">Error: ${esc(e.message)}</div>`
   }
 }
 
-async function saveContact(leadId, name, title, email) {
-  if (!confirm(`Save "${name}"${title ? ' ('+title+')' : ''} as contact for this lead?`)) return
-  await updateLead(leadId, 'contact_name', name)
-  await updateLead(leadId, 'contact_title', title)
-  if (email) await updateLead(leadId, 'email', email)
-  // Refresh the panel
+let lastContactResults = []
+
+async function saveContact(leadId, contact) {
+  const { name = '', title = '', email = '' } = contact || {}
+  if (!confirm(`Save "${name}"${title ? ' ('+title+')' : ''} as the contact for this lead?`)) return
+  const lead = allLeads.find(l => l.id === leadId)
+  if (lead?.email && email && lead.email !== email &&
+      !confirm(`This lead already has ${lead.email}.\n\nReplace it with ${email}?`)) return
+
+  // One PATCH rather than three sequential round trips.
+  const update = { contact_name: name, contact_title: title, updated_by: localStorage.getItem(LS.ue) || 'User' }
+  if (email) update.email = email
+  if (!(await dbWrite(`leads?id=eq.${leadId}`, { method: 'PATCH', body: JSON.stringify(update) }))) return
+  if (lead) { Object.assign(lead, update); invalidateSearch(lead) }
+
+  toast(`Saved ${name} as the contact`, 'success')
   openLeadPanel(leadId)
-  document.getElementById('contacts-result-' + leadId).innerHTML = ''
+  filterLeadsTable()
 }
 
 async function callAI(messages) {
@@ -2950,30 +3144,42 @@ async function callAI(messages) {
 
   if (provider === 'default') {
     headers['Authorization'] = 'Bearer ' + getAuthToken()
-    body = JSON.stringify({ message: messages[messages.length-1].content, history: messages.slice(0,-1), provider: 'openai' })
+    // No provider pinned — the function picks whichever key the admin configured.
+    body = JSON.stringify({ message: messages[messages.length-1].content, history: messages.slice(0,-1) })
   } else if (provider === 'openai' || provider === 'custom') {
     const key = localStorage.getItem(AI_KEY_KEY)
     if (!key) throw new Error('API key not configured — go to Settings')
     if (provider === 'custom') endpoint = localStorage.getItem(AI_ENDPOINT_KEY) || ''
     if (!endpoint) throw new Error('Custom endpoint URL not configured — go to Settings')
     headers['Authorization'] = 'Bearer ' + key
-    body = JSON.stringify({ model: 'gpt-4o-mini', messages, temperature: 0.3, max_tokens: 800 })
+    body = JSON.stringify({ model: OPENAI_MODEL, messages, temperature: 0.3, max_tokens: 800 })
   } else if (provider === 'anthropic') {
     const key = localStorage.getItem(AI_KEY_KEY)
     if (!key) throw new Error('API key not configured — go to Settings')
     headers['x-api-key'] = key
     headers['anthropic-version'] = '2023-06-01'
+    // Required for browser-originated calls, or the request fails CORS.
+    headers['anthropic-dangerous-direct-browser-access'] = 'true'
     const systemMsg = messages.find(m => m.role === 'system')
     const userMsgs = messages.filter(m => m.role !== 'system')
     body = JSON.stringify({
-      model: 'claude-3-haiku-20240307',
+      model: ANTHROPIC_MODEL,
       max_tokens: 800,
       system: systemMsg?.content || '',
       messages: userMsgs,
     })
   }
 
-  const res = await fetch(endpoint, { method: 'POST', headers, body })
+  let res
+  try {
+    res = await fetch(endpoint, { method: 'POST', headers, body })
+  } catch (e) {
+    // A blocked request throws a bare TypeError; say what actually happened.
+    const host = (() => { try { return new URL(endpoint).host } catch { return endpoint } })()
+    throw new Error(
+      `Could not reach ${host}. If this is a custom endpoint, its host must be ` +
+      `added to the connect-src list in the page's Content-Security-Policy.`)
+  }
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
     throw new Error(`API error (${res.status}): ${errText.slice(0, 200)}`)
@@ -3010,8 +3216,8 @@ async function sendChat() {
   if (!text) return
 
   input.value = ''
-  msgs.innerHTML += `<div class="chat-msg user">${esc(text)}</div>`
-  msgs.scrollTop = msgs.scrollHeight
+  document.querySelector('.chat-welcome')?.remove()
+  appendChatMessage(text, 'user')
 
   const typingEl = document.createElement('div')
   typingEl.className = 'chat-typing'
@@ -3030,26 +3236,69 @@ async function sendChat() {
     ]
     const reply = await callAI(messages)
     typingEl.remove()
-    msgs.innerHTML += `<div class="chat-msg ai">${reply}</div>`
+    appendChatMessage(reply, 'ai')
     chatHistory.push({ role: 'user', content: text })
     chatHistory.push({ role: 'assistant', content: reply })
   } catch (e) {
     typingEl.remove()
-    msgs.innerHTML += `<div class="chat-msg ai" style="color:var(--red)">Error: ${esc(e.message)} — <a href="#" onclick="showPage('config');return false" style="color:var(--accent)">Settings</a></div>`
+    const err = appendChatMessage(`Error: ${e.message} — `, 'ai')
+    err.style.color = 'var(--red)'
+    const link = document.createElement('a')
+    link.href = '#'
+    link.textContent = 'Settings'
+    link.style.color = 'var(--accent)'
+    link.onclick = ev => { ev.preventDefault(); showPage('config') }
+    err.appendChild(link)
   }
   msgs.scrollTop = msgs.scrollHeight
+}
+
+/**
+ * Model output is never trusted HTML. The chat prompt embeds scraped lead data,
+ * so a poisoned exhibitor description could otherwise get the model to echo
+ * markup that runs in the app. textContent + a <br> pass keeps it inert.
+ */
+function appendChatMessage(text, kind) {
+  const msgs = document.getElementById('chat-msgs')
+  const el = document.createElement('div')
+  el.className = 'chat-msg ' + kind
+  String(text ?? '').split('\n').forEach((line, i) => {
+    if (i) el.appendChild(document.createElement('br'))
+    el.appendChild(document.createTextNode(line))
+  })
+  msgs.appendChild(el)
+  msgs.scrollTop = msgs.scrollHeight
+  return el
 }
 
 document.getElementById('chat-input')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChat()
 })
 
-loadAIProvider()
-loadHunterKey()
+loadAIProvider();
+loadHunterKey();
 
 // ── Init ──────────────────────────────────────────────────────────────────
+// The semicolons above are load-bearing. Without them automatic semicolon
+// insertion reads this as `loadHunterKey()(async function init(){…})()`, which
+// throws "loadHunterKey(...) is not a function" before init ever runs — so the
+// app never restored a saved session, never loaded data on refresh, and never
+// handled an invite link.
 (async function init() {
   loadColumnPrefs()
+  initTheme();
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  });
+  // Escape closes whatever is on top. Modals previously had no keyboard exit.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const open = [...document.querySelectorAll('.modal-overlay.open')].pop();
+    if (open) { open.classList.remove('open'); return; }
+    if (document.getElementById('lead-panel').classList.contains('open')) { closePanel(); return; }
+    if (chatOpen) toggleChat();
+  });
 
   const ue = localStorage.getItem(LS.ue);
   const at = localStorage.getItem(LS.at);

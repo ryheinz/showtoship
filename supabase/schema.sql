@@ -157,11 +157,18 @@ ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scrape_jobs    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles  ENABLE ROW LEVEL SECURITY;
 
+-- Shared team data: any signed-in team member has full access.
 CREATE POLICY "Auth access — leads"          ON leads          FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Auth access — tradeshows"     ON tradeshows     FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Auth access — lead_activities" ON lead_activities FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Auth access — scrape_jobs"    ON scrape_jobs    FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Auth access — user_profiles"  ON user_profiles  FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Profiles are READ-ONLY to clients. A FOR ALL policy here would let any
+-- signed-in user PATCH their own row to role='admin' and unlock the
+-- admin-users function. All profile writes go through the handle_new_user
+-- trigger (SECURITY DEFINER) or the admin edge function (service role).
+CREATE POLICY "profiles readable by authenticated"
+  ON user_profiles FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ── Migration: add contact_title to existing database ──────────
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS contact_title TEXT;

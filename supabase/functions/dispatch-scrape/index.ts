@@ -73,7 +73,7 @@ serve(async (req) => {
       .from('scrape_jobs')
       .insert({
         tradeshow_name: showName,
-        urls: urls.split('\n').map(s => s.trim()).filter(Boolean),
+        urls: urls.split('\n').map((s: string) => s.trim()).filter(Boolean),
         status: 'pending',
         options: {
           use_llm: body.use_llm === 'true',

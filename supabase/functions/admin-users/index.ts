@@ -16,7 +16,7 @@ function json(data: unknown, status = 200) {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
 
-  const authHeader = req.headers.get('Authorization')!
+  const authHeader = req.headers.get('Authorization')
   if (!authHeader) return json({ error: 'Unauthorized' }, 401)
 
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
@@ -55,7 +55,7 @@ serve(async (req) => {
     const { data, error } = await adminClient.auth.admin.listUsers()
     if (error) return json({ error: 'listUsers: ' + error.message }, 500)
     const userIds = data.users.map(u => u.id)
-    const { data: profiles } = await supabase
+    const { data: profiles } = await adminClient
       .from('user_profiles')
       .select('id, role')
       .in('id', userIds)

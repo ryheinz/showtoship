@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Model ids live here so the edge function and the frontend can be updated
+// together; both were pinned to 2024-era models.
+const ANTHROPIC_MODEL = 'claude-haiku-4-5'
+const OPENAI_MODEL = 'gpt-4o-mini'
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -50,9 +55,13 @@ serve(async (req) => {
       })
     }
 
-    const aiProvider = provider || 'openai'
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
+
+    // Fall back to whichever key is actually configured. The client used to
+    // hardcode 'openai', so a deployment holding only ANTHROPIC_API_KEY
+    // reported "AI not configured" no matter what.
+    const aiProvider = provider || (openaiKey ? 'openai' : anthropicKey ? 'anthropic' : 'openai')
 
     if (aiProvider === 'openai' && !openaiKey) {
       return new Response(JSON.stringify({ error: 'AI not configured — ask your admin to add OPENAI_API_KEY secret' }), {
@@ -169,7 +178,7 @@ Rules:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: ANTHROPIC_MODEL,
           max_tokens: 800,
           system: systemMsg?.content || '',
           messages: userMsgs,
@@ -191,7 +200,7 @@ Rules:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: OPENAI_MODEL,
           messages,
           temperature: 0.3,
           max_tokens: 800,

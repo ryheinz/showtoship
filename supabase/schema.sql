@@ -100,7 +100,15 @@ CREATE TABLE IF NOT EXISTS scrape_jobs (
 );
 
 -- ── Unique constraint: one company per show ──────────────────
-CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_show ON leads(company_name, tradeshow_id);
+-- Case-insensitive, and falls back to the show NAME when tradeshow_id is null.
+-- A plain (company_name, tradeshow_id) index does NOT dedupe rows with a null
+-- tradeshow_id, because Postgres treats nulls as distinct — that let every CSV
+-- import insert a fresh copy of the whole file.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_show
+  ON leads (
+    lower(trim(company_name)),
+    COALESCE(tradeshow_id::text, lower(coalesce(tradeshow_name, '')))
+  );
 
 -- ── Indexes ───────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_leads_tradeshow   ON leads(tradeshow_id);

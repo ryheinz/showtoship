@@ -84,6 +84,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .nav-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:18px 20px 10px;opacity:.8}
 .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;font-size:16px;color:var(--muted);cursor:pointer;border-radius:0;transition:all .15s,border-color .2s;text-decoration:none;border-left:2px solid transparent;font-weight:500}
 .nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item:focus-visible,.action-btn:focus-visible,.btn-sm:focus-visible,.btn-outline:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .nav-item.active{background:rgba(91,141,239,.1);color:var(--accent);border-left-color:var(--accent);font-weight:600}
 .nav-item svg{width:18px;height:18px;flex-shrink:0;opacity:.7}
 .nav-item.active svg{opacity:1}
@@ -115,6 +116,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* ── Table ── */
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+/* Wide tables scroll instead of being clipped: overflow:hidden on the wrapper
+   meant the right-hand columns were simply unreachable on a laptop. */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-scroll table{min-width:max-content}
 .table-toolbar{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 16px;flex:1;min-width:200px;transition:border-color .2s}
 .search-box:focus-within{border-color:var(--accent)}
@@ -302,6 +307,16 @@ a.ext-link:hover{text-decoration:underline}
 .chat-typing{padding:8px 14px;font-size:13px;color:var(--dim);font-style:italic;align-self:flex-start}
 .chat-welcome{text-align:center;padding:40px 20px;color:var(--dim);font-size:15px;line-height:1.7}
 .chat-welcome strong{color:var(--text)}
+
+/* ── Toasts ── */
+#toast-host{position:fixed;bottom:24px;left:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;max-width:min(420px,calc(100vw - 48px))}
+.toast{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-left-width:4px;border-radius:8px;padding:12px 16px;font-size:14px;box-shadow:var(--shadow-lg);animation:toastIn .18s ease;word-break:break-word}
+.toast-error{border-left-color:var(--red)}
+.toast-success{border-left-color:var(--green)}
+.toast-info{border-left-color:var(--accent)}
+.toast.leaving{opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}.page{animation:none}}
 </style>
 </head>
 <body>
@@ -354,35 +369,35 @@ a.ext-link:hover{text-decoration:underline}
 <nav class="sidebar">
   <div class="nav-section">
     <div class="nav-label">Workspace</div>
-    <a class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+    <a tabindex="0" role="button" class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       Dashboard
     </a>
-    <a class="nav-item" onclick="showPage('leads')" data-page="leads">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('leads')" data-page="leads">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       All Leads
       <span class="nav-badge" id="leads-count">0</span>
     </a>
-    <a class="nav-item" onclick="showPage('shows')" data-page="shows">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('shows')" data-page="shows">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Tradeshows
     </a>
   </div>
   <div class="nav-section">
     <div class="nav-label">Pipeline</div>
-    <a class="nav-item" onclick="filterLeads('new')" data-filter="new">
+    <a tabindex="0" role="button" class="nav-item" onclick="filterLeads('new')" data-filter="new">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       New
     </a>
-    <a class="nav-item" onclick="filterLeads('contacted')" data-filter="contacted">
+    <a tabindex="0" role="button" class="nav-item" onclick="filterLeads('contacted')" data-filter="contacted">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 18"/></svg>
       Contacted
     </a>
-    <a class="nav-item" onclick="filterLeads('qualified')" data-filter="qualified">
+    <a tabindex="0" role="button" class="nav-item" onclick="filterLeads('qualified')" data-filter="qualified">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       Qualified
     </a>
-    <a class="nav-item" onclick="filterLeads('opportunity')" data-filter="opportunity">
+    <a tabindex="0" role="button" class="nav-item" onclick="filterLeads('opportunity')" data-filter="opportunity">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       Opportunities
     </a>
@@ -394,30 +409,30 @@ a.ext-link:hover{text-decoration:underline}
   </div>
   <div class="nav-section">
     <div class="nav-label">Tools</div>
-    <a class="nav-item" onclick="showPage('linkedin')" data-page="linkedin">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('linkedin')" data-page="linkedin">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
       LinkedIn Tools
     </a>
-    <a class="nav-item" onclick="exportLeads()">
+    <a tabindex="0" role="button" class="nav-item" onclick="exportLeads()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Export Excel
+      Export CSV
     </a>
-    <a class="nav-item" onclick="showPage('admin')" data-page="admin" id="nav-admin" style="display:none">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('admin')" data-page="admin" id="nav-admin" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Admin
     </a>
-    <a class="nav-item" onclick="showPage('reports')" data-page="reports">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('reports')" data-page="reports">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
       Reports
     </a>
-    <a class="nav-item" onclick="showPage('config')" data-page="config">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('config')" data-page="config">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 1 1-14.14 0"/></svg>
       Settings
     </a>
   </div>
   <div class="nav-section">
     <div class="nav-label">Help</div>
-    <a class="nav-item" onclick="showPage('docs')" data-page="docs">
+    <a tabindex="0" role="button" class="nav-item" onclick="showPage('docs')" data-page="docs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Guides
     </a>
@@ -543,12 +558,14 @@ a.ext-link:hover{text-decoration:underline}
         <button class="btn-outline" onclick="exportSelected()" id="bulk-export-btn" disabled>Export Sel.</button>
       </div>
       <div class="letter-bar" id="letter-bar"></div>
+      <div class="table-scroll">
       <table>
         <thead><tr id="leads-table-header"></tr></thead>
         <tbody id="leads-table-body">
           <tr><td colspan="99" style="text-align:center;color:var(--dim);padding:40px">Loading leads…</td></tr>
         </tbody>
       </table>
+      </div>
     </div>
     <div class="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px 0;font-size:12px;color:var(--muted)">
       <div>
@@ -578,6 +595,7 @@ a.ext-link:hover{text-decoration:underline}
       <button class="btn-sm" onclick="openAddShowModal()">+ Add Show</button>
     </div>
     <div class="table-wrap">
+      <div class="table-scroll">
       <table>
         <thead><tr>
           <th>Show Name</th><th>URL</th><th>Location</th><th>Industry</th><th>Dates</th><th>Leads</th><th>Attending</th><th></th>
@@ -586,6 +604,7 @@ a.ext-link:hover{text-decoration:underline}
           <tr><td colspan="8" style="text-align:center;color:var(--dim);padding:40px">No shows yet</td></tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -758,8 +777,8 @@ a.ext-link:hover{text-decoration:underline}
             <li><strong>Assign:</strong> Click a lead to open the detail panel, then pick a team member from the Assign dropdown.</li>
             <li><strong>Bulk Actions:</strong> Select multiple leads with checkboxes, then use <strong>Bulk Assign</strong> or <strong>Bulk Delete</strong>.</li>
             <li><strong>Letter Bar:</strong> Click a letter to filter leads alphabetically by company name.</li>
-            <li><strong>Duplicate Finder:</strong> Click <strong>Find Duplicates</strong> to highlight leads with the same company name so you can merge or delete them.</li>
-            <li><strong>Export:</strong> Click <strong>Export Excel</strong> in the sidebar to download all filtered leads as an .xlsx file.</li>
+            <li><strong>Duplicate Finder:</strong> Click <strong>Duplicates</strong> to list leads that share an email address or LinkedIn URL, so you can merge or delete them.</li>
+            <li><strong>Export:</strong> Click <strong>Export CSV</strong> in the sidebar to download every lead matching your current filters. The file opens cleanly in Excel, accents included.</li>
           </ul>
         </div>
       </div>
@@ -1332,10 +1351,11 @@ async function loadShowsData() {
 }
 
 function loadDashboard() {
-  document.getElementById('stat-total').textContent     = allLeads.length || '—';
-  document.getElementById('stat-emails').textContent    = allLeads.filter(l => l.email).length || '—';
-  document.getElementById('stat-qualified').textContent = allLeads.filter(l => l.status === 'qualified' || l.status === 'opportunity').length || '—';
-  document.getElementById('stat-shows').textContent     = allShows.length || '—';
+  // A real zero is information; `count || '—'` was rendering it as "no data".
+  document.getElementById('stat-total').textContent     = allLeads.length;
+  document.getElementById('stat-emails').textContent    = allLeads.filter(l => l.email).length;
+  document.getElementById('stat-qualified').textContent = allLeads.filter(l => l.status === 'qualified' || l.status === 'opportunity').length;
+  document.getElementById('stat-shows').textContent     = allShows.length;
 
   // Recent leads
   const tbody = document.getElementById('recent-leads-body');
@@ -1344,7 +1364,7 @@ function loadDashboard() {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:32px">No leads yet</td></tr>';
   } else {
     tbody.innerHTML = recent.map(l => `
-      <tr onclick="openLeadPanel('${l.id}')" style="cursor:pointer">
+      <tr data-lead-id="${esc(l.id)}" style="cursor:pointer">
         <td><div class="company-name">${esc(l.company_name)}</div></td>
         <td style="font-size:12px;color:var(--muted)">${esc(l.tradeshow_name||'')}</td>
         <td>${statusBadge(l.status)}</td>
@@ -1427,11 +1447,14 @@ function renderPipelineChart() {
 }
 
 function renderShowPerformance() {
-  const showData = allShows.map(s => ({
-    name: s.name,
-    total: allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase()).length,
-    qualified: allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase() && (l.status === 'qualified' || l.status === 'opportunity')).length,
-  })).sort((a, b) => b.total - a.total).slice(0, 8)
+  const showData = allShows.map(s => {
+    const leads = leadsForShow(s)
+    return {
+      name: s.name,
+      total: leads.length,
+      qualified: leads.filter(l => l.status === 'qualified' || l.status === 'opportunity').length,
+    }
+  }).filter(d => d.total > 0).sort((a, b) => b.total - a.total).slice(0, 8)
 
   const max = Math.max(...showData.map(d => d.total), 1)
   document.getElementById('showperf-chart').innerHTML = showData.length ? `
@@ -1442,9 +1465,9 @@ function renderShowPerformance() {
             <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${esc(d.name)}</span>
             <span style="color:var(--muted)">${d.qualified}/${d.total} qualified</span>
           </div>
-          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex">
-            <div style="height:100%;width:${d.total/max*100}%;background:var(--accent);border-radius:4px;transition:width .4s"></div>
-            <div style="height:100%;width:${d.qualified/d.total*100*(d.total/max)}%;background:var(--green);border-radius:4px;transition:width .4s;margin-left:2px"></div>
+          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative">
+            <div style="position:absolute;inset:0;width:${d.total/max*100}%;background:var(--accent);border-radius:4px;transition:width .4s"></div>
+            <div style="position:absolute;inset:0;width:${d.qualified/max*100}%;background:var(--green);border-radius:4px;transition:width .4s"></div>
           </div>
         </div>
       `).join('')}
@@ -1571,7 +1594,7 @@ function renderTopTitles() {
 
 function renderContactsPerShow() {
   const showData = allShows.map(s => {
-    const leads = allLeads.filter(l => l.tradeshow_name?.toLowerCase() === s.name?.toLowerCase())
+    const leads = leadsForShow(s)
     return {
       name: s.name,
       total: leads.length,
@@ -1590,8 +1613,8 @@ function renderContactsPerShow() {
             <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${esc(d.name)}</span>
             <span style="color:var(--muted)">${d.withContact}/${d.withEmail} contacts</span>
           </div>
-          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex">
-            <div style="height:100%;width:${d.withContact/d.total*100*(d.total/max)}%;background:var(--accent2);border-radius:4px;transition:width .4s"></div>
+          <div style="height:20px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${d.withContact/max*100}%;background:var(--accent2);border-radius:4px;transition:width .4s"></div>
           </div>
         </div>
       `).join('')}
@@ -1672,10 +1695,11 @@ let pageSize = 50;
 let pageNum = 1;
 
 function setPageSize(size) {
-  pageSize = parseInt(size);
+  pageSize = parseInt(size, 10) || 50;
   pageNum = 1;
+  // filterLeadsTable writes "N leads · Page x of y"; blanking it here threw
+  // that away every time the page size changed.
   filterLeadsTable();
-  document.getElementById('leads-subtitle').textContent = '';
 }
 
 function changePage(delta) {
@@ -1704,6 +1728,30 @@ function filterByShow(name) {
   filterLeadsTable(true);
 }
 
+/**
+ * Text a free-text search should look at, built once per lead and cached.
+ *
+ * The old code ran JSON.stringify(lead) for every lead on every keystroke,
+ * which also meant the search matched field NAMES and raw URLs — typing "new"
+ * matched every lead via "status":"new", and "com" matched every website.
+ */
+const SEARCH_FIELDS = ['company_name','contact_name','contact_title','email','phone',
+  'tradeshow_name','country','city','industry','category','products','description',
+  'booth_number','hall','assigned_to','notes'];
+const searchCache = new WeakMap();
+
+/** Leads are mutated in place after a save, so drop the cached text. */
+function invalidateSearch(lead) { if (lead) searchCache.delete(lead); }
+
+function searchBlob(lead) {
+  let blob = searchCache.get(lead);
+  if (blob === undefined) {
+    blob = SEARCH_FIELDS.map(f => lead[f] || '').join(' ').toLowerCase();
+    searchCache.set(lead, blob);
+  }
+  return blob;
+}
+
 function getFilteredLeads() {
   const search  = document.getElementById('lead-search').value.toLowerCase();
   const show    = document.getElementById('filter-show').value;
@@ -1714,7 +1762,7 @@ function getFilteredLeads() {
   const countryFilter = document.getElementById('filter-country').value.toLowerCase().trim();
   let result = allLeads.filter(l => {
     if (countryFilter && !(l.country||'').toLowerCase().includes(countryFilter)) return false;
-    if (search && !JSON.stringify(l).toLowerCase().includes(search)) return false;
+    if (search && !searchBlob(l).includes(search)) return false;
     if (show   && l.tradeshow_name?.toLowerCase() !== show.toLowerCase()) return false;
     if (status && l.status !== status) return false;
     if (assigned && l.assigned_to !== assigned) return false;
@@ -1766,7 +1814,7 @@ function findDuplicates() {
   for (const g of Object.values(byEmail)) if (g.length > 1) groups.push({ reason: 'Same email', leads: g });
   for (const g of Object.values(byLinkedIn)) if (g.length > 1) groups.push({ reason: 'Same LinkedIn URL', leads: g });
 
-  if (!groups.length) { alert('No duplicates found'); return; }
+  if (!groups.length) { toast('No duplicates found', 'success'); return; }
 
   let html = groups.map(g => `
     <div style="margin-bottom:16px">
@@ -1791,10 +1839,15 @@ function findDuplicates() {
 
 function filterLeadsTable(resetPage) {
   if (resetPage) pageNum = 1;
-  selected.clear();
+  let filtered = getFilteredLeads();
+  // Selection survives paging and sorting now (it was cleared on every render).
+  // Only drop ids that no longer match the filters.
+  if (selected.size) {
+    const visible = new Set(filtered.map(l => l.id));
+    [...selected].forEach(id => { if (!visible.has(id)) selected.delete(id); });
+  }
   const selAll = document.getElementById('select-all');
   if (selAll) selAll.checked = false;
-  let filtered = getFilteredLeads();
   const total = filtered.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pageNum > pages) pageNum = pages;
@@ -1803,14 +1856,21 @@ function filterLeadsTable(resetPage) {
   renderLeadsTable(page);
   document.getElementById('leads-subtitle').textContent =
     `${total} leads · Page ${pageNum} of ${pages}`;
-  document.getElementById('page-info').textContent =
-    `${start+1}–${Math.min(start+pageSize, total)} of ${total}`;
+  document.getElementById('page-info').textContent = total
+    ? `${start+1}–${Math.min(start+pageSize, total)} of ${total}`
+    : '0 of 0';
   document.getElementById('page-input').value = pageNum;
   document.getElementById('page-input').max = pages;
   document.getElementById('first-page').disabled = pageNum <= 1;
   document.getElementById('prev-page').disabled = pageNum <= 1;
   document.getElementById('next-page').disabled = pageNum >= pages;
   document.getElementById('last-page').disabled = pageNum >= pages;
+  // Re-tick boxes for rows that were already selected on another page.
+  document.querySelectorAll('#leads-table-body tr[data-id]').forEach(tr => {
+    const box = tr.querySelector('input[type=checkbox]');
+    if (box) box.checked = selected.has(tr.dataset.id);
+  });
+  updateBulkButtons();
 }
 
 function colCount() {
@@ -1973,21 +2033,35 @@ function closePanel() {
 }
 
 async function updateLead(id, field, value) {
+  const lead = allLeads.find(l => l.id === id);
+  const previous = lead ? lead[field] : undefined;
+  if (lead && previous === value) return true;   // notes textarea fires on every blur
+
   const update = { [field]: value, updated_by: localStorage.getItem(LS.ue) || 'User' };
-  await sbFetch(`leads?id=eq.${id}`, {
+  // Optimistic, but reverted below if the write fails — the old code kept the
+  // new value on screen whether or not it reached the database.
+  if (lead) lead[field] = value;
+
+  const ok = await dbWrite(`leads?id=eq.${id}`, {
     method: 'PATCH',
     body: JSON.stringify(update),
   });
-  // Update local cache
-  const lead = allLeads.find(l => l.id === id);
-  if (lead) lead[field] = value;
+
+  invalidateSearch(lead);
+  if (!ok && lead) {
+    lead[field] = previous;
+    if (document.getElementById('lead-panel').classList.contains('open')) openLeadPanel(id);
+  }
   if (field === 'status' || field === 'assigned_to') filterLeadsTable();
+  return ok;
 }
 
 async function deleteLead(id) {
-  if (!confirm('Delete this lead permanently?')) return;
-  await sbFetch(`leads?id=eq.${id}`, { method: 'DELETE' });
+  const lead = allLeads.find(l => l.id === id);
+  if (!confirm(`Delete "${lead?.company_name || 'this lead'}" permanently?`)) return;
+  if (!(await dbWrite(`leads?id=eq.${id}`, { method: 'DELETE' }))) return;
   allLeads = allLeads.filter(l => l.id !== id);
+  toast('Lead deleted', 'success');
   closePanel();
   filterLeadsTable();
 }
@@ -2094,17 +2168,38 @@ async function saveShow() {
     website:    document.getElementById('show-website').value.trim(),
     attending:  document.getElementById('show-attending').checked,
   };
-  if (!data.name) { alert('Show name required'); return; }
+  if (!data.name) { toast('Show name is required', 'error'); return; }
   if (data.date_start && data.date_end && data.date_end < data.date_start) {
-    alert('End date must be after start date'); return;
+    toast('End date must be on or after the start date', 'error'); return;
   }
+
+  const clash = allShows.find(s =>
+    s.id !== editShowId && (s.name || '').trim().toLowerCase() === data.name.toLowerCase());
+  if (clash) { toast(`A show called "${clash.name}" already exists`, 'error'); return; }
+
+  let ok;
   if (editShowId) {
-    await sbFetch(`tradeshows?id=eq.${editShowId}`, { method: 'PATCH', body: JSON.stringify(data) });
+    const previous = allShows.find(s => s.id === editShowId);
+    ok = await dbWrite(`tradeshows?id=eq.${editShowId}`, { method: 'PATCH', body: JSON.stringify(data) });
+    // tradeshow_name is denormalised onto every lead, so a rename has to carry
+    // through or those leads silently detach from the show.
+    if (ok && previous && previous.name !== data.name) {
+      const mine = leadsForShow(previous).map(l => l.id);
+      for (const chunk of chunked(mine, 200)) {
+        await dbWrite(`leads?id=in.(${chunk.join(',')})`, {
+          method: 'PATCH',
+          body: JSON.stringify({ tradeshow_name: data.name, tradeshow_id: editShowId }),
+        });
+      }
+      if (mine.length) toast(`Renamed show and updated ${mine.length} leads`, 'success');
+    }
   } else {
-    await sbFetch('tradeshows', { method: 'POST', body: JSON.stringify(data) });
+    ok = await dbWrite('tradeshows', { method: 'POST', body: JSON.stringify(data) });
   }
+  if (!ok) return;
+
   closeModal('show-modal');
-  await loadShowsData();
+  await loadAllData();
   loadShows();
 }
 
@@ -2115,7 +2210,8 @@ function editShow(id) {
   document.getElementById('show-modal-title').textContent = 'Edit Tradeshow';
   document.getElementById('show-save-btn').textContent = 'Save Changes';
   document.getElementById('show-name-input').value = show.name || '';
-  document.getElementById('show-name-input').disabled = true;
+  // Renaming is allowed now — saveShow carries the new name onto the leads.
+  document.getElementById('show-name-input').disabled = false;
   document.getElementById('show-location').value = show.location || '';
   document.getElementById('show-industry').value = show.industry || '';
   document.getElementById('show-date-start').value = show.date_start || '';
@@ -2191,9 +2287,19 @@ function checkShowExists(name) {
 
 async function triggerScrape() {
   const showName = document.getElementById('scrape-show-name').value.trim();
-  if (!showName) { alert('Enter a show name.'); return; }
-  const urls     = document.getElementById('scrape-urls').value.trim();
-  if (!urls) { alert('Enter at least one URL.'); return; }
+  if (!showName) { toast('Enter a show name', 'error'); return; }
+  const raw = document.getElementById('scrape-urls').value.trim();
+  if (!raw) { toast('Enter at least one exhibitor list URL', 'error'); return; }
+
+  // Validate before dispatching — a typo used to burn a full Actions run and
+  // come back as an unexplained "0 leads found".
+  const candidates = raw.split('\n').map(u => u.trim()).filter(Boolean);
+  const bad = candidates.filter(u => { try { const p = new URL(u); return !/^https?:$/.test(p.protocol); } catch { return true; } });
+  if (bad.length) {
+    toast(`Not a valid URL: ${bad[0].slice(0, 60)}${bad[0].length > 60 ? '…' : ''}`, 'error', 6000);
+    return;
+  }
+  const urls = candidates.join('\n');
 
   const logEl = document.getElementById('scrape-log');
   logEl.style.display = 'block';
@@ -2241,42 +2347,71 @@ async function triggerScrape() {
 }
 
 async function pollScrapeJob(jobId, log, showName, urls) {
-  for (let i = 0; i < 120; i++) {
-    await sleep(3000);
+  // The old loop gave up after 120 × 3s = 6 minutes and printed "Timed out",
+  // while the workflow itself is allowed 45. Any real scrape — email hunting
+  // especially — looked like a failure and got re-run. Follow the workflow's
+  // budget instead, and slow the polling down as the job gets longer.
+  const DEADLINE = Date.now() + 50 * 60 * 1000;
+  const started = Date.now();
+  let lastStatus = '';
+  let delay = 3000;
+
+  while (Date.now() < DEADLINE) {
+    await sleep(delay);
+    delay = Math.min(delay * 1.15, 15000);
+
     const data = await sbFetch(`scrape_jobs?select=*&id=eq.${jobId}&limit=1`);
     if (!data || !data.length) continue;
     const job = data[0];
-    if (job.status === 'pending') {
-      log('⏳ Pending…', '');
-    } else if (job.status === 'running') {
-      log('🔄 Scraping in progress…', '');
-    } else if (job.status === 'done') {
-      log(`✓ Complete! ${job.leads_found || 0} leads found (${job.leads_new || 0} new, ${job.leads_updated || 0} updated)`, 'ok');
+    const mins = Math.round((Date.now() - started) / 60000);
+
+    // Only log on a change, plus a heartbeat — this used to print the same
+    // "Pending…" line 120 times.
+    if (job.status !== lastStatus) {
+      lastStatus = job.status;
+      if (job.status === 'pending') log('⏳ Queued — waiting for a GitHub runner…', '');
+      if (job.status === 'running') log('🔄 Scraping in progress…', 'info');
+    } else if (mins > 0 && mins % 5 === 0) {
+      log(`… still ${job.status} (${mins} min elapsed)`, '');
+    }
+
+    if (job.status === 'done') {
+      const found = job.leads_found || 0;
+      log(`✓ Complete! ${found} leads found (${job.leads_new || 0} new, ${job.leads_updated || 0} updated)`, 'ok');
+      if (!found) {
+        log('⚠ The scraper reached the page but extracted nothing. The site may need a', 'err');
+        log('  site-specific config, or try turning on LLM Extraction.', 'err');
+      }
       await loadAllData();
       loadLeads();
       afterScrapeSaveUrl(showName, urls);
+      toast(found ? `Scrape finished — ${found} leads` : 'Scrape finished, but found no exhibitors', found ? 'success' : 'error');
       document.getElementById('run-btn').disabled = false;
       return;
     } else if (job.status === 'failed') {
       log('✗ Failed: ' + (job.error || 'Unknown error'), 'err');
+      toast('Scrape failed — see the job log', 'error');
       document.getElementById('run-btn').disabled = false;
       return;
     }
   }
-  log('⏱ Timed out — check GitHub Actions for status', 'err');
+  log('⏱ Still running after 50 minutes — this page stopped watching.', 'err');
+  log('  The job may still finish; reload later or check GitHub Actions.', 'err');
   document.getElementById('run-btn').disabled = false;
 }
 
 async function afterScrapeSaveUrl(showName, urls) {
-  const show = allShows.find(s => s.name.toLowerCase() === showName.toLowerCase());
+  const show = allShows.find(s => (s.name || '').toLowerCase() === showName.toLowerCase());
   if (!show || !urls) return;
+  // Only fill a blank. This used to overwrite a hand-entered show website with
+  // whatever URL was scraped, on every single run.
+  if (show.website) return;
   const firstUrl = urls.split('\n')[0].split(',')[0].trim();
   if (!firstUrl) return;
-  try {
-    await sbFetch(`tradeshows?id=eq.${show.id}`, { method: 'PATCH', body: JSON.stringify({ website: firstUrl }) });
+  if (await dbWrite(`tradeshows?id=eq.${show.id}`, { method: 'PATCH', body: JSON.stringify({ website: firstUrl }) })) {
     show.website = firstUrl;
     loadShows();
-  } catch (e) { console.error('Failed to save scrape URL', e); }
+  }
 }
 
 function editShowUrl(showId, td) {
@@ -2296,13 +2431,15 @@ function editShowUrl(showId, td) {
   td.appendChild(input);
   input.focus();
   input.select();
+  let saving = false;
   const save = async () => {
+    if (saving) return;              // blur + Enter both fire otherwise
+    saving = true;
     const val = input.value.trim();
-    try {
-      await sbFetch(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ website: val }) });
-      const show = allShows.find(s => s.id === showId);
+    const show = allShows.find(s => s.id === showId);
+    if (await dbWrite(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ website: val }) })) {
       if (show) show.website = val;
-    } catch (e) { console.error('Failed to save URL', e); }
+    }
     loadShows();
   };
   input.addEventListener('blur', save);
@@ -2326,13 +2463,15 @@ function editShowField(showId, field, td) {
   td.appendChild(input);
   input.focus();
   input.select();
+  let saving = false;
   const save = async () => {
+    if (saving) return;
+    saving = true;
     const val = input.value.trim();
-    try {
-      await sbFetch(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ [field]: val }) });
-      const show = allShows.find(s => s.id === showId);
+    const show = allShows.find(s => s.id === showId);
+    if (await dbWrite(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ [field]: val }) })) {
       if (show) show[field] = val;
-    } catch (e) { console.error('Failed to save', e); }
+    }
     loadShows();
   };
   input.addEventListener('blur', save);
@@ -2347,29 +2486,37 @@ function editShowDates(showId, td) {
   const s = td.querySelector('#ds'), e = td.querySelector('#de');
   s.focus();
   s.select();
+  let saving = false;
   const save = async () => {
+    // Tabbing from start to end date fires blur on the first input; don't
+    // save (and re-render, destroying the second input) until focus leaves.
+    if (saving || td.contains(document.activeElement)) return;
+    saving = true;
+    if (s.value && e.value && e.value < s.value) {
+      toast('End date must be on or after the start date', 'error');
+      loadShows();
+      return;
+    }
     const v = { date_start: s.value || null, date_end: e.value || null };
-    try {
-      await sbFetch(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify(v) });
+    if (await dbWrite(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify(v) })) {
       Object.assign(show, v);
-    } catch (ex) { console.error('Failed to save dates', ex); }
+    }
     loadShows();
   };
-  s.addEventListener('blur', save);
-  e.addEventListener('blur', save);
+  s.addEventListener('blur', () => setTimeout(save, 0));
+  e.addEventListener('blur', () => setTimeout(save, 0));
   s.addEventListener('keydown', k => { if (k.key === 'Enter') { k.preventDefault(); s.blur(); } });
   e.addEventListener('keydown', k => { if (k.key === 'Enter') { k.preventDefault(); e.blur(); } });
 }
 
-async function toggleAttending(showId, td) {
+async function toggleAttending(showId) {
   const show = allShows.find(s => s.id === showId);
   if (!show) return;
   const val = !show.attending;
-  try {
-    await sbFetch(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ attending: val }) });
+  if (await dbWrite(`tradeshows?id=eq.${showId}`, { method: 'PATCH', body: JSON.stringify({ attending: val }) })) {
     show.attending = val;
-    loadShows();
-  } catch (e) { console.error('Failed to toggle attending', e); }
+  }
+  loadShows();
 }
 
 function displayUrl(u) { return u === '—' ? '' : u; }
@@ -2387,50 +2534,52 @@ function openImportModal() {
 let importRows = [];
 function handleImportFile(input) {
   const file = input.files[0];
+  const statusEl = document.getElementById('import-status');
   if (!file) { document.getElementById('import-file-name').textContent = 'Click to select CSV file'; return; }
   document.getElementById('import-file-name').textContent = file.name;
   const reader = new FileReader();
+  reader.onerror = () => { statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Could not read that file'; };
   reader.onload = ev => {
-    const text = ev.target.result;
-    const lines = text.split('\n');
-    if (lines.length < 2) { document.getElementById('import-status').textContent = 'CSV must have a header row'; return; }
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').replace(/\s+/g,' '));
-    importRows = lines.slice(1).filter(l => l.trim()).map(line => {
-      const vals = line.split(',');
-      const obj = {};
-      headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
-      return obj;
-    });
-    const mapping = {
-      'company': 'company_name', 'company_name': 'company_name', 'organization': 'company_name',
-      'first name': 'first_name', 'first': 'first_name',
-      'last name': 'last_name', 'last': 'last_name',
-      'contact': 'contact_name', 'name': 'contact_name', 'full name': 'contact_name',
-      'email': 'email', 'email address': 'email', 'email_address': 'email',
-      'phone': 'phone', 'telephone': 'phone',
-      'linkedin': 'linkedin_url', 'linkedin url': 'linkedin_url', 'linkedin_url': 'linkedin_url', 'linkedin profile': 'linkedin_url',
-      'website': 'website', 'company website': 'website', 'company_website': 'website',
-      'industry': 'industry',
-      'country': 'country',
-      'city': 'city', 'location': 'city',
-      'title': 'title', 'job title': 'title', 'job_title': 'title',
-      'notes': 'notes', 'source': 'source_url', 'source_url': 'source_url',
-    };
-    let preview = `<div style="font-weight:600;margin-bottom:6px">${importRows.length} rows · ${headers.length} columns</div><table style="width:100%;font-size:11px;border-collapse:collapse"><thead><tr style="background:var(--surface2)">`;
-    headers.forEach(h => {
-      const mapped = mapping[h.toLowerCase()] || '<span style="color:var(--red)">skip</span>';
-      preview += `<th style="padding:4px 6px;text-align:left;border:1px solid var(--border);white-space:nowrap">${h}<br><span style="font-weight:400">→ ${mapped}</span></th>`;
+    const { headers, rows } = readCSV(ev.target.result);
+    if (!headers.length || !rows.length) {
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'That file needs a header row and at least one data row';
+      document.getElementById('import-run-btn').disabled = true;
+      return;
+    }
+
+    // The preview now shows exactly what the import will do — it used to
+    // advertise mappings (First Name → first_name) that runImport never
+    // applied, so those columns silently vanished.
+    importRows = rows.map(cells => rowToLead(headers, cells));
+    const usable = importRows.filter(r => r.company_name || r.contact_name || r.email).length;
+    const mapped = headers.map(mapCSVHeader);
+
+    let preview = `<div style="font-weight:600;margin-bottom:6px">${rows.length} rows · ${headers.length} columns · ${usable} importable</div>`;
+    if (!mapped.some(Boolean)) {
+      preview += `<div style="color:var(--red);margin-bottom:8px">No columns matched a known field. Rename your headers to things like Company, Contact, Email, Phone, Website.</div>`;
+    }
+    preview += `<table style="width:100%;font-size:11px;border-collapse:collapse"><thead><tr style="background:var(--surface2)">`;
+    headers.forEach((h, i) => {
+      const m = mapped[i]
+        ? `<span style="color:var(--green)">→ ${esc(mapped[i])}</span>`
+        : '<span style="color:var(--dim)">→ skipped</span>';
+      preview += `<th style="padding:4px 6px;text-align:left;border:1px solid var(--border);white-space:nowrap">${esc(h)}<br><span style="font-weight:400">${m}</span></th>`;
     });
     preview += '</tr></thead><tbody>';
-    importRows.slice(0, 5).forEach(row => {
-      preview += '<tr>' + headers.map(h => `<td style="padding:4px 6px;border:1px solid var(--border);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[h]||''}</td>`).join('') + '</tr>';
+    rows.slice(0, 5).forEach(cells => {
+      preview += '<tr>' + headers.map((h, i) =>
+        `<td style="padding:4px 6px;border:1px solid var(--border);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cells[i]||'')}</td>`).join('') + '</tr>';
     });
-    if (importRows.length > 5) preview += `<tr><td colspan="${headers.length}" style="padding:4px 6px;text-align:center;color:var(--dim)">… and ${importRows.length - 5} more rows</td></tr>`;
+    if (rows.length > 5) preview += `<tr><td colspan="${headers.length}" style="padding:4px 6px;text-align:center;color:var(--dim)">… and ${rows.length - 5} more rows</td></tr>`;
     preview += '</tbody></table>';
+
     document.getElementById('import-preview').innerHTML = preview;
-    document.getElementById('import-status').textContent = 'Preview ready — click Import to save';
-    document.getElementById('import-status').style.color = '';
-    document.getElementById('import-run-btn').disabled = false;
+    statusEl.style.color = usable ? '' : 'var(--red)';
+    statusEl.textContent = usable
+      ? `Ready to import ${usable} leads` + (usable < rows.length ? ` (${rows.length - usable} rows have no company, contact or email and will be skipped)` : '')
+      : 'No row has a company, contact or email — nothing to import';
+    document.getElementById('import-run-btn').disabled = usable === 0;
   };
   reader.readAsText(file);
 }
@@ -2439,31 +2588,50 @@ async function runImport() {
   const btn = document.getElementById('import-run-btn');
   btn.disabled = true; btn.textContent = 'Importing…';
   const tradeshowName = document.getElementById('import-tradeshow').value;
+  const show = allShows.find(s => s.name === tradeshowName);
   const status = document.getElementById('import-status');
-  let saved = 0; let errors = 0;
-  for (const row of importRows) {
-    const lead = {
-      company_name:   row.company_name || row.Company || row.company || row.Organization || '',
-      contact_name:   row.contact_name || row.Contact || row.name || row.Name || ((row.first_name||row.First||'') + ' ' + (row.last_name||row.Last||'')).trim() || '',
-      email:          row.email || row.Email || row['Email Address'] || '',
-      phone:          row.phone || row.Phone || '',
-      linkedin_url:   row.linkedin_url || row.LinkedIn || row['LinkedIn URL'] || row['LinkedIn Profile'] || '',
-      website:        row.website || row.Website || '',
-      industry:       row.industry || row.Industry || '',
-      country:        row.country || row.Country || '',
-      city:           row.city || row.City || row.location || row.Location || '',
-      notes:          row.notes || row.Notes || row.title || row.Title || '',
-      source_url:     row.source_url || row.Source || 'csv_import',
+  status.style.color = '';
+
+  const leads = importRows
+    .filter(r => r.company_name || r.contact_name || r.email)
+    .map(r => ({
+      ...r,
+      source_url:     r.source_url || 'csv_import',
       status:         'new',
       tradeshow_name: tradeshowName || null,
-    };
-    if (!lead.company_name && !lead.contact_name && !lead.email) { errors++; continue; }
-    const result = await sbFetch('leads', { method: 'POST', body: JSON.stringify(lead) });
-    if (result) saved++; else errors++;
+      // Setting the id (not just the name) is what makes the dedup index bite;
+      // without it every re-import inserted a fresh copy of the whole file.
+      tradeshow_id:   show ? show.id : null,
+    }));
+
+  const skipped = importRows.length - leads.length;
+  let saved = 0, failed = 0;
+
+  // Batched inserts instead of one request per row — a 2,000-row file used to
+  // mean 2,000 sequential round trips. merge-duplicates makes re-importing the
+  // same file update rather than duplicate.
+  const BATCH = 200;
+  for (const [n, batch] of [...chunked(leads, BATCH)].entries()) {
+    status.textContent = `Importing ${Math.min((n + 1) * BATCH, leads.length)} of ${leads.length}…`;
+    lastDbError = '';
+    const result = await sbFetch('leads', {
+      method: 'POST',
+      headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
+      body: JSON.stringify(batch),
+    });
+    if (result) saved += Array.isArray(result) ? result.length : batch.length;
+    else failed += batch.length;
   }
-  status.style.color = saved ? 'var(--green)' : 'var(--red)';
-  status.textContent = `✓ Imported ${saved} leads` + (errors ? `, ${errors} skipped` : '');
-  btn.textContent = 'Done';
+
+  status.style.color = failed ? 'var(--amber)' : 'var(--green)';
+  status.textContent = `Imported ${saved} leads`
+    + (skipped ? ` · ${skipped} rows skipped (no company, contact or email)` : '')
+    + (failed  ? ` · ${failed} failed — ${lastDbError || 'see console'}` : '');
+  if (saved) toast(`Imported ${saved} leads`, 'success');
+  if (failed) toast(`${failed} leads could not be imported`, 'error');
+
+  btn.textContent = failed ? 'Retry' : 'Done';
+  btn.disabled = !failed;
   await loadAllData();
   loadLeads();
 }
@@ -2477,41 +2645,121 @@ function handleCSVUpload(input) {
     const text = e.target.result;
     const rows = parseCSV(text);
     const status = document.getElementById('csv-status');
-    status.textContent = `Parsed ${rows.length} rows — saving to database…`;
-    let saved = 0;
-    for (const row of rows) {
-      const result = await sbFetch('leads', { method: 'POST', body: JSON.stringify(row) });
-      if (result) saved++;
+    if (!rows.length) {
+      status.style.color = 'var(--red)';
+      status.textContent = 'No usable rows found — expected columns like Company, First Name, Last Name, Email';
+      return;
     }
-    status.style.color = 'var(--green)';
-    status.textContent = `✓ Imported ${saved} leads from Sales Navigator CSV`;
+    status.style.color = '';
+    let saved = 0, failed = 0;
+    for (const [n, batch] of [...chunked(rows, 200)].entries()) {
+      status.textContent = `Saving ${Math.min((n + 1) * 200, rows.length)} of ${rows.length}…`;
+      const result = await sbFetch('leads', {
+        method: 'POST',
+        headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
+        body: JSON.stringify(batch),
+      });
+      if (result) saved += Array.isArray(result) ? result.length : batch.length;
+      else failed += batch.length;
+    }
+    status.style.color = failed ? 'var(--amber)' : 'var(--green)';
+    status.textContent = `Imported ${saved} leads from Sales Navigator`
+      + (failed ? ` · ${failed} failed — ${lastDbError || 'see console'}` : '');
     await loadAllData();
+    loadLeads();
   };
   reader.readAsText(file);
 }
 
+/**
+ * RFC 4180 CSV reader. Replaces `line.split(',')`, which shifted every column
+ * after a quoted comma ("Acme, Inc.") and left a stray \r on the last field of
+ * every row in a Windows/Excel export — so the header never matched either.
+ * Returns { headers, rows } where rows are arrays of raw cell strings.
+ */
+function readCSV(text) {
+  const src = String(text).replace(/^﻿/, '');   // strip BOM
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { field += '"'; i++; }   // escaped quote
+        else inQuotes = false;
+      } else field += c;
+      continue;
+    }
+    if (c === '"') { inQuotes = true; continue; }
+    if (c === ',') { row.push(field); field = ''; continue; }
+    if (c === '\r') { if (src[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; continue; }
+    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; continue; }
+    field += c;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+
+  const nonEmpty = rows.filter(r => r.some(c => c.trim() !== ''));
+  if (!nonEmpty.length) return { headers: [], rows: [] };
+  return {
+    headers: nonEmpty[0].map(h => h.trim()),
+    rows: nonEmpty.slice(1),
+  };
+}
+
+/** Header text → canonical field name. Shared by the preview and the import. */
+const CSV_HEADER_MAP = {
+  'company': 'company_name', 'company name': 'company_name', 'company_name': 'company_name',
+  'organization': 'company_name', 'organisation': 'company_name', 'account': 'company_name', 'account name': 'company_name',
+  'first name': 'first_name', 'first': 'first_name', 'first_name': 'first_name', 'firstname': 'first_name', 'given name': 'first_name',
+  'last name': 'last_name', 'last': 'last_name', 'last_name': 'last_name', 'lastname': 'last_name', 'surname': 'last_name', 'family name': 'last_name',
+  'contact': 'contact_name', 'name': 'contact_name', 'full name': 'contact_name', 'contact name': 'contact_name', 'contact_name': 'contact_name',
+  'email': 'email', 'email address': 'email', 'email_address': 'email', 'e-mail': 'email', 'work email': 'email',
+  'phone': 'phone', 'telephone': 'phone', 'phone number': 'phone', 'mobile': 'phone',
+  'linkedin': 'linkedin_url', 'linkedin url': 'linkedin_url', 'linkedin_url': 'linkedin_url',
+  'linkedin profile': 'linkedin_url', 'linkedin member url': 'linkedin_url', 'linkedin_member_url': 'linkedin_url', 'profile url': 'linkedin_url',
+  'website': 'website', 'company website': 'website', 'company_website': 'website', 'url': 'website', 'domain': 'website',
+  'industry': 'industry',
+  'country': 'country',
+  'city': 'city', 'location': 'city', 'town': 'city',
+  'title': 'contact_title', 'job title': 'contact_title', 'job_title': 'contact_title',
+  'position': 'contact_title', 'role': 'contact_title', 'headline': 'contact_title',
+  'booth': 'booth_number', 'booth number': 'booth_number', 'stand': 'booth_number',
+  'hall': 'hall',
+  'notes': 'notes', 'note': 'notes', 'comments': 'notes',
+  'source': 'source_url', 'source_url': 'source_url',
+};
+
+function mapCSVHeader(h) {
+  const key = String(h || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return CSV_HEADER_MAP[key] || CSV_HEADER_MAP[key.replace(/[\s_-]+/g, ' ')] || null;
+}
+
+/** Turn one CSV row into a lead, using the mapped headers. */
+function rowToLead(headers, cells) {
+  const f = {};
+  headers.forEach((h, i) => {
+    const key = mapCSVHeader(h);
+    if (!key) return;
+    const val = (cells[i] || '').trim();
+    if (val && !f[key]) f[key] = val;
+  });
+  if (!f.contact_name && (f.first_name || f.last_name)) {
+    f.contact_name = [f.first_name, f.last_name].filter(Boolean).join(' ');
+  }
+  delete f.first_name;
+  delete f.last_name;
+  if (f.website) f.website = safeUrl(f.website);
+  if (f.linkedin_url) f.linkedin_url = safeUrl(f.linkedin_url);
+  return f;
+}
+
+/** Sales Navigator export → leads. Same header mapping as the generic import. */
 function parseCSV(text) {
-  const lines = text.split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase().replace(/\s+/g,'_'));
-  return lines.slice(1).filter(l => l.trim()).map(line => {
-    const vals = line.split(',');
-    const obj = {};
-    headers.forEach((h,i) => { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
-    // Map Sales Navigator columns to our schema
-    return {
-      company_name:   obj.company || obj.company_name || '',
-      contact_name:   ((obj.first_name||'') + ' ' + (obj.last_name||'')).trim(),
-      email:          obj.email_address || obj.email || '',
-      phone:          obj.phone || '',
-      linkedin_url:   obj.linkedin_member_url || obj.linkedin_url || '',
-      website:        obj.company_website || obj.website || '',
-      industry:       obj.industry || '',
-      country:        obj.country || '',
-      city:           obj.city || obj.location || '',
-      source_url:     'linkedin_sales_navigator',
-      status:         'new',
-    };
-  }).filter(r => r.company_name);
+  const { headers, rows } = readCSV(text);
+  return rows
+    .map(cells => ({ ...rowToLead(headers, cells), source_url: 'linkedin_sales_navigator', status: 'new' }))
+    .filter(r => r.company_name || r.contact_name || r.email);
 }
 
 // ── Export ────────────────────────────────────────────────────────────────
@@ -2520,19 +2768,35 @@ function csvEscape(val) {
   return /[,"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
 
+const EXPORT_HEADERS = ['company_name','tradeshow_name','booth_number','hall','country','city',
+  'industry','category','email','email_confidence','phone','contact_name','contact_title','website',
+  'linkedin_url','status','priority','assigned_to','notes'];
+
+/**
+ * Downloads a CSV. Two fixes over the old version: a UTF-8 BOM, without which
+ * Excel mangles every accented character in a European exhibitor list, and a
+ * Blob + real anchor, because a long data: URI silently fails in some browsers.
+ */
+function downloadCSV(leads, filename) {
+  const csv = [EXPORT_HEADERS.join(','),
+    ...leads.map(l => EXPORT_HEADERS.map(h => csvEscape(l[h])).join(','))
+  ].join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Exported ${leads.length} leads`, 'success');
+}
+
 function exportLeads() {
   const leads = getFilteredLeads();
-  if (!leads.length) { alert('No leads to export'); return; }
-  const headers = ['company_name','tradeshow_name','booth_number','hall','country','city',
-    'industry','category','email','email_confidence','phone','contact_name','website',
-    'linkedin_url','status','priority','assigned_to','notes'];
-  const csv = [headers.join(','),
-    ...leads.map(l => headers.map(h => csvEscape(l[h])).join(','))
-  ].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `showtoship_export_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
+  if (!leads.length) { toast('No leads match the current filters', 'error'); return; }
+  downloadCSV(leads, `showtoship_export_${new Date().toISOString().split('T')[0]}.csv`);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -2595,6 +2859,15 @@ function initTheme() {
   document.documentElement.setAttribute('data-theme', saved);
   document.getElementById('theme-toggle').textContent = saved === 'light' ? '☀️' : '🌙';
 }
+
+// <a> without href isn't focusable or keyboard-activatable; the tabindex is
+// added in the markup and this makes Enter/Space behave like a click.
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('nav-item')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
 
 function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');
@@ -2680,7 +2953,29 @@ async function loadTeamMembers() {
 
 function updateBulkButtons() {
   const count = selected.size;
-  document.getElementById('selected-count').textContent = count ? `${count} selected` : '';
+  const countEl = document.getElementById('selected-count');
+  countEl.innerHTML = '';
+  if (count) {
+    // Selection now survives paging, so say how it relates to the filter and
+    // offer the "all of them" action explicitly rather than leaving people to
+    // assume the header checkbox covered more than the visible page.
+    const matching = getFilteredLeads().length;
+    countEl.append(`${count} selected`);
+    if (count < matching) {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.textContent = `select all ${matching}`;
+      a.style.cssText = 'color:var(--accent);margin-left:8px;font-size:13px';
+      a.onclick = e => { e.preventDefault(); selectAllFiltered(); };
+      countEl.append(a);
+    }
+    const c = document.createElement('a');
+    c.href = '#';
+    c.textContent = 'clear';
+    c.style.cssText = 'color:var(--muted);margin-left:8px;font-size:13px';
+    c.onclick = e => { e.preventDefault(); clearSelection(); };
+    countEl.append(c);
+  }
   document.getElementById('bulk-status-btn').disabled = count === 0;
   document.getElementById('bulk-assign-btn').disabled = count === 0;
   document.getElementById('bulk-show-btn').disabled = count === 0;
@@ -2696,97 +2991,155 @@ function toggleSelectAll(cb) {
   });
   updateBulkButtons();
 }
+
+/** Select every lead matching the current filters, not just the visible page. */
+function selectAllFiltered() {
+  getFilteredLeads().forEach(l => selected.add(l.id));
+  document.querySelectorAll('#leads-table-body input[type=checkbox]').forEach(c => c.checked = true);
+  const selAll = document.getElementById('select-all');
+  if (selAll) selAll.checked = true;
+  updateBulkButtons();
+}
+
+function clearSelection() {
+  selected.clear();
+  document.querySelectorAll('#leads-table-body input[type=checkbox]').forEach(c => c.checked = false);
+  const selAll = document.getElementById('select-all');
+  if (selAll) selAll.checked = false;
+  updateBulkButtons();
+}
 function handleSelect(cb, id) {
   if (cb.checked) selected.add(id); else selected.delete(id);
   updateBulkButtons();
+}
+
+/**
+ * Small modal picker. Replaces prompt(), where you had to type a status string
+ * exactly right and a typo silently did nothing at all.
+ */
+function choose({ title, label, options, allowFree = false, confirmLabel = 'Apply' }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+      <div class="modal" style="width:420px">
+        <div class="modal-head"><h3>${esc(title)}</h3><button class="modal-close" data-cancel>✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>${esc(label)}</label>
+            ${allowFree
+              ? `<input list="choose-list" id="choose-value" placeholder="Type or pick…">
+                 <datalist id="choose-list">${options.map(o => `<option value="${esc(o.value)}">`).join('')}</datalist>`
+              : `<select id="choose-value">${options.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}</select>`}
+          </div>
+          <div class="form-actions">
+            <button class="btn-outline" data-cancel>Cancel</button>
+            <button class="btn-sm" data-ok>${esc(confirmLabel)}</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#choose-value');
+    input.focus();
+
+    const done = v => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => {
+      if (e.key === 'Escape') done(null);
+      if (e.key === 'Enter' && document.activeElement === input) done(input.value.trim() || null);
+    };
+    document.addEventListener('keydown', onKey);
+    overlay.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => done(null));
+    overlay.querySelector('[data-ok]').onclick = () => done(input.value.trim() || null);
+    overlay.onclick = e => { if (e.target === overlay) done(null); };
+  });
+}
+
+/** PATCH many leads in batches rather than one request each. */
+async function bulkPatch(ids, update, describe) {
+  const payload = { ...update, updated_by: localStorage.getItem(LS.ue) || 'User' };
+  let ok = 0, bad = 0;
+  for (const chunk of chunked(ids, 200)) {
+    if (await dbWrite(`leads?id=in.(${chunk.join(',')})`, { method: 'PATCH', body: JSON.stringify(payload) })) {
+      ok += chunk.length;
+      chunk.forEach(id => {
+        const lead = allLeads.find(l => l.id === id);
+        if (lead) { Object.assign(lead, update); invalidateSearch(lead); }
+      });
+    } else bad += chunk.length;
+  }
+  if (ok)  toast(`${describe} for ${ok} lead${ok === 1 ? '' : 's'}`, 'success');
+  if (bad) toast(`${bad} lead${bad === 1 ? '' : 's'} could not be updated`, 'error');
+  selected.clear();
+  updateBulkButtons();
+  filterLeadsTable();
 }
 
 async function bulkStatus() {
   const ids = [...selected];
   if (!ids.length) return;
   const statuses = ['new','contacted','qualified','disqualified','opportunity','closed'];
-  const current = new Set();
-  ids.forEach(id => {
-    const lead = allLeads.find(l => l.id === id);
-    if (lead && lead.status) current.add(lead.status);
+  const s = await choose({
+    title: `Set status for ${ids.length} lead${ids.length === 1 ? '' : 's'}`,
+    label: 'New status',
+    options: statuses.map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) })),
   });
-  const suggested = current.size === 1 ? [...current][0] : 'new';
-  const s = prompt(`Set status for ${ids.length} lead(s) (${statuses.join(', ')}):`, suggested);
   if (!s || !statuses.includes(s)) return;
-  for (const id of ids) {
-    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ status: s, updated_by: localStorage.getItem(LS.ue) || 'User' }) });
-    const lead = allLeads.find(l => l.id === id);
-    if (lead) lead.status = s;
-  }
-  selected.clear();
-  updateBulkButtons();
-  filterLeadsTable();
+  await bulkPatch(ids, { status: s }, `Status set to "${s}"`);
 }
 
 async function bulkAssign() {
   const ids = [...selected];
   if (!ids.length) return;
-  const options = teamMembers.map(m => `${m}`).join(', ');
-  const s = prompt(`Assign ${ids.length} lead(s) to (${options}):`, teamMembers[0] || '');
-  if (!s) return;
-  for (const id of ids) {
-    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ assigned_to: s, updated_by: localStorage.getItem(LS.ue) || 'User' }) });
-    const lead = allLeads.find(l => l.id === id);
-    if (lead) lead.assigned_to = s;
-  }
-  selected.clear();
-  updateBulkButtons();
-  filterLeadsTable();
+  if (!teamMembers.length) { toast('No team members found — add users on the Admin page', 'error'); return; }
+  const s = await choose({
+    title: `Assign ${ids.length} lead${ids.length === 1 ? '' : 's'}`,
+    label: 'Assign to',
+    options: [{ value: '', label: '— Unassigned —' }, ...teamMembers.map(m => ({ value: m, label: m }))],
+  });
+  if (s === null) return;
+  await bulkPatch(ids, { assigned_to: s }, s ? `Assigned to ${s}` : 'Unassigned');
 }
 
 async function bulkReassignShow() {
   const ids = [...selected];
   if (!ids.length) return;
-  const shows = allShows.map(s => s.name).join(', ');
-  const s = prompt(`Reassign ${ids.length} lead(s) to which tradeshow?\nCurrent shows: ${shows}`);
-  if (!s) return;
-  // Find or infer the tradeshow_id
-  const match = allShows.find(sh => sh.name.toLowerCase() === s.trim().toLowerCase());
-  const update = { tradeshow_name: s.trim(), updated_by: localStorage.getItem(LS.ue) || 'User' };
-  if (match) update.tradeshow_id = match.id;
-  for (const id of ids) {
-    await sbFetch(`leads?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(update) });
-    const lead = allLeads.find(l => l.id === id);
-    if (lead) { lead.tradeshow_name = s.trim(); if (match) lead.tradeshow_id = match.id; }
-  }
-  selected.clear();
-  updateBulkButtons();
-  filterLeadsTable();
+  const name = await choose({
+    title: `Move ${ids.length} lead${ids.length === 1 ? '' : 's'} to a show`,
+    label: 'Tradeshow',
+    options: allShows.map(s => ({ value: s.name, label: s.name })),
+    allowFree: true,
+    confirmLabel: 'Move',
+  });
+  if (!name) return;
+  const match = allShows.find(sh => (sh.name || '').toLowerCase() === name.toLowerCase());
+  if (!match && !confirm(`"${name}" is not an existing show.\n\nMove these leads to it anyway? They won't be linked to a show record until you create one with that exact name.`)) return;
+  await bulkPatch(ids, { tradeshow_name: name, tradeshow_id: match ? match.id : null }, `Moved to "${name}"`);
 }
 
 async function bulkDelete() {
   const ids = [...selected];
   if (!ids.length) return;
-  if (!confirm(`Delete ${ids.length} lead(s) permanently?`)) return;
-  for (const id of ids) {
-    await sbFetch(`leads?id=eq.${id}`, { method: 'DELETE' });
-    allLeads = allLeads.filter(l => l.id !== id);
+  if (!confirm(`Delete ${ids.length} lead${ids.length === 1 ? '' : 's'} permanently?\n\nThis cannot be undone.`)) return;
+  let ok = 0, bad = 0;
+  for (const chunk of chunked(ids, 200)) {
+    if (await dbWrite(`leads?id=in.(${chunk.join(',')})`, { method: 'DELETE' })) {
+      ok += chunk.length;
+      const gone = new Set(chunk);
+      allLeads = allLeads.filter(l => !gone.has(l.id));
+    } else bad += chunk.length;
   }
+  if (ok)  toast(`Deleted ${ok} lead${ok === 1 ? '' : 's'}`, 'success');
+  if (bad) toast(`${bad} lead${bad === 1 ? '' : 's'} could not be deleted`, 'error');
   selected.clear();
   updateBulkButtons();
   filterLeadsTable();
 }
 
 function exportSelected() {
-  const ids = [...selected];
-  if (!ids.length) return;
-  const leads = allLeads.filter(l => ids.includes(l.id));
-  if (!leads.length) { alert('No leads to export'); return; }
-  const headers = ['company_name','tradeshow_name','booth_number','hall','country','city',
-    'industry','category','email','email_confidence','phone','contact_name','website',
-    'linkedin_url','status','priority','assigned_to','notes'];
-  const csv = [headers.join(','),
-    ...leads.map(l => headers.map(h => csvEscape(l[h])).join(','))
-  ].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `showtoship_export_selected_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
+  const ids = new Set(selected);
+  const leads = allLeads.filter(l => ids.has(l.id));
+  if (!leads.length) { toast('Nothing selected to export', 'error'); return; }
+  downloadCSV(leads, `showtoship_export_selected_${new Date().toISOString().split('T')[0]}.csv`);
 }
 
 function statusBadge(s) {
